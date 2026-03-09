@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
+import formbody from '@fastify/formbody';
 import helmet from '@fastify/helmet';
 import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
@@ -24,6 +25,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
   await app.register(jwt, { secret: config.jwt.secret });
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+  await app.register(formbody);
   await app.register(swagger, {
     openapi: {
       info: { title: 'Alashed Tracker API', version: '1.0.0' },

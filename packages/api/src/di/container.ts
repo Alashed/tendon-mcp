@@ -3,6 +3,8 @@ import { WorkspaceRepository } from '../domains/workspaces/WorkspaceRepository.j
 import { TaskRepository } from '../domains/tasks/TaskRepository.js';
 import { ActivityRepository } from '../domains/activities/ActivityRepository.js';
 import { ActivityService } from '../domains/activities/ActivityService.js';
+import { OAuthRepository } from '../domains/oauth/OAuthRepository.js';
+import { OAuthService } from '../domains/oauth/OAuthService.js';
 
 export interface Container {
   userRepository: UserRepository;
@@ -10,6 +12,8 @@ export interface Container {
   taskRepository: TaskRepository;
   activityRepository: ActivityRepository;
   activityService: ActivityService;
+  oauthRepository: OAuthRepository;
+  oauthService: OAuthService;
 }
 
 let container: Container | null = null;
@@ -20,6 +24,8 @@ export function initContainer(): Container {
   const taskRepository = new TaskRepository();
   const activityRepository = new ActivityRepository();
   const activityService = new ActivityService(activityRepository, taskRepository);
+  const oauthRepository = new OAuthRepository();
+  const oauthService = new OAuthService(oauthRepository, userRepository, workspaceRepository);
 
   container = {
     userRepository,
@@ -27,6 +33,8 @@ export function initContainer(): Container {
     taskRepository,
     activityRepository,
     activityService,
+    oauthRepository,
+    oauthService,
   };
 
   return container;

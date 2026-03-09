@@ -33,6 +33,9 @@ export const config = {
   cors: {
     allowedOrigins: optional('CORS_ORIGINS', 'http://localhost:3000').split(','),
   },
+
+  apiBaseUrl: optional('API_BASE_URL', 'http://localhost:3001'),
+  mcpBaseUrl: optional('MCP_BASE_URL', 'http://localhost:3002'),
 } as const;
 
 export function validateConfig(): void {
