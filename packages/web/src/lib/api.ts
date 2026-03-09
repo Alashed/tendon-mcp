@@ -1,18 +1,12 @@
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tracker.alashed.kz';
 
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('alashed_token');
-}
-
-async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
+async function apiFetch<T>(path: string, token: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
     ...(options.headers as Record<string, string>),
   };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
   const data = await res.json();
@@ -23,44 +17,6 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     );
   }
   return data as T;
-}
-
-/* ── Auth ──────────────────────────────────────────────── */
-
-export interface RegisterResult {
-  user: { id: string; email: string; name: string };
-  workspace: { id: string; name: string; type: string };
-  token: string;
-}
-
-export async function register(
-  name: string,
-  email: string,
-  password: string
-): Promise<RegisterResult> {
-  const res = await apiFetch<{ data: RegisterResult }>('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ name, email, password }),
-  });
-  return res.data;
-}
-
-export interface LoginResult {
-  user: { id: string; email: string; name: string };
-  workspace: { id: string; name: string; type: string };
-  token: string;
-}
-
-export async function login(email: string, password: string): Promise<LoginResult> {
-  const res = await apiFetch<{
-    data: { user: LoginResult['user']; workspaces: LoginResult['workspace'][]; token: string };
-  }>('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-  const personal =
-    res.data.workspaces.find((w) => w.type === 'personal') ?? res.data.workspaces[0];
-  return { user: res.data.user, workspace: personal, token: res.data.token };
 }
 
 /* ── Tasks ─────────────────────────────────────────────── */
@@ -76,29 +32,34 @@ export interface Task {
   source: string;
 }
 
-export async function getTasks(workspaceId: string): Promise<Task[]> {
+export async function getTasks(workspaceId: string, token: string): Promise<Task[]> {
   const res = await apiFetch<{ data: Task[] }>(
-    `/tasks?workspace_id=${encodeURIComponent(workspaceId)}`
+    `/tasks?workspace_id=${encodeURIComponent(workspaceId)}`,
+    token
   );
   return res.data;
 }
 
-export async function createTask(workspaceId: string, title: string): Promise<Task> {
-  const res = await apiFetch<{ data: Task }>('/tasks', {
+export async function createTask(workspaceId: string, title: string, token: string): Promise<Task> {
+  const res = await apiFetch<{ data: Task }>('/tasks', token, {
     method: 'POST',
     body: JSON.stringify({ workspace_id: workspaceId, title, source: 'web' }),
   });
   return res.data;
 }
 
-export async function updateTask(taskId: string, updates: Partial<Pick<Task, 'status' | 'title' | 'priority'>>): Promise<Task> {
-  const res = await apiFetch<{ data: Task }>(`/tasks/${taskId}`, {
+export async function updateTask(
+  taskId: string,
+  updates: Partial<Pick<Task, 'status' | 'title' | 'priority'>>,
+  token: string
+): Promise<Task> {
+  const res = await apiFetch<{ data: Task }>(`/tasks/${taskId}`, token, {
     method: 'PATCH',
     body: JSON.stringify(updates),
   });
   return res.data;
 }
 
-export async function deleteTask(taskId: string): Promise<void> {
-  await apiFetch<void>(`/tasks/${taskId}`, { method: 'DELETE' });
+export async function deleteTask(taskId: string, token: string): Promise<void> {
+  await apiFetch<void>(`/tasks/${taskId}`, token, { method: 'DELETE' });
 }

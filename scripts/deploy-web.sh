@@ -8,15 +8,19 @@ REGION="eu-north-1"
 INSTANCE_ID="i-08eb56616ddb569bc"
 S3_BUCKET="alashed-media"
 S3_KEY="deployments/web.tar.gz"
-APP_DIR="/home/ubuntu/apps/alashed-tracker/packages/web"
+# On EC2, we extract the standalone bundle here — server.js lands at $APP_DIR/packages/web/server.js
+APP_DIR="/home/ubuntu/apps/alashed-web"
 
 echo "==> Building web…"
-cd "$(dirname "$0")/../packages/web"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$REPO_ROOT/packages/web"
 
 npm run build
 
 echo "==> Preparing standalone bundle…"
+# Copy public assets and static files into the standalone output
 cp -r public .next/standalone/public 2>/dev/null || true
+mkdir -p .next/standalone/.next
 cp -r .next/static .next/standalone/.next/static
 
 echo "==> Packaging…"
@@ -26,7 +30,7 @@ echo "==> Uploading to S3…"
 aws s3 cp /tmp/web.tar.gz "s3://${S3_BUCKET}/${S3_KEY}" --region "$REGION"
 
 echo "==> Deploying via SSM…"
-aws ssm send-command \
+COMMAND_ID=$(aws ssm send-command \
   --region "$REGION" \
   --instance-ids "$INSTANCE_ID" \
   --document-name "AWS-RunShellScript" \
@@ -35,15 +39,17 @@ aws ssm send-command \
     'mkdir -p ${APP_DIR}',
     'cd ${APP_DIR}',
     'aws s3 cp s3://${S3_BUCKET}/${S3_KEY} web.tar.gz --region ${REGION}',
-    'rm -rf server.js .next public',
+    'rm -rf node_modules packages .next public package.json',
     'tar -xzf web.tar.gz',
     'rm web.tar.gz',
-    'pm2 restart alashed-web || pm2 start server.js --name alashed-web --cwd ${APP_DIR} -- --hostname 0.0.0.0',
+    'pm2 delete alashed-web 2>/dev/null || true',
+    'PORT=3030 CLERK_SECRET_KEY=sk_test_wyZOqehcqUmLd4AEbYJEnDtGlaXVljaikbZmwSCMlR pm2 start ${APP_DIR}/packages/web/server.js --name alashed-web --cwd ${APP_DIR}/packages/web',
     'pm2 save',
     'echo DONE'
   ]" \
   --output text \
-  --query "Command.CommandId"
+  --query "Command.CommandId")
 
-echo "==> Done! Web deploy triggered."
-echo "    Check logs: aws ssm get-command-invocation --region ${REGION} --instance-id ${INSTANCE_ID} --command-id <ID>"
+echo "==> SSM command ID: $COMMAND_ID"
+echo "    Monitor: aws ssm get-command-invocation --region ${REGION} --instance-id ${INSTANCE_ID} --command-id ${COMMAND_ID} --query '[StandardOutputContent,StandardErrorContent]' --output text"
+echo "==> Web deploy triggered."

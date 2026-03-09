@@ -1,27 +1,20 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-const PROTECTED_PREFIXES = ['/dashboard', '/onboarding'];
-const AUTH_ONLY = ['/login', '/register'];
+const isProtected = createRouteMatcher([
+  '/dashboard(.*)',
+  '/onboarding(.*)',
+  '/oauth/authorize(.*)',
+]);
 
-export function middleware(request: NextRequest) {
-  const token = request.cookies.get('alashed_token')?.value;
-  const { pathname } = request.nextUrl;
-
-  const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p));
-  const isAuthPage = AUTH_ONLY.includes(pathname);
-
-  if (isProtected && !token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtected(req)) {
+    await auth.protect();
   }
-
-  if (isAuthPage && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-
-  return NextResponse.next();
-}
+});
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/onboarding/:path*', '/login', '/register'],
+  matcher: [
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
 };

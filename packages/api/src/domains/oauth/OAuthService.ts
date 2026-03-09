@@ -78,22 +78,35 @@ export class OAuthService {
   async processConsent(params: AuthorizeParams & { email?: string; password?: string }): Promise<string> {
     await this.validateAuthorizeRequest(params);
 
-    // Authenticate user
+    // Authenticate user (legacy email/password flow)
     const user = await this.userRepo.findByEmail(params.email ?? '');
     if (!user || user.password_hash !== hashPassword(params.password ?? '')) {
       throw new AppError(401, 'Invalid email or password');
     }
 
-    // Get personal workspace
     const workspaces = await this.workspaceRepo.listForUser(user.id);
     const workspace = workspaces.find(w => w.type === 'personal') ?? workspaces[0];
     if (!workspace) throw new AppError(400, 'No workspace found');
 
-    // Issue code
+    return this._issueCode(params, user.id, workspace.id);
+  }
+
+  async processConsentWithUserId(
+    params: AuthorizeParams & { user_id: string; workspace_id: string },
+  ): Promise<string> {
+    await this.validateAuthorizeRequest(params);
+    return this._issueCode(params, params.user_id, params.workspace_id);
+  }
+
+  private async _issueCode(
+    params: AuthorizeParams,
+    userId: string,
+    workspaceId: string,
+  ): Promise<string> {
     const oauthCode = await this.oauthRepo.createCode({
       client_id: params.client_id!,
-      user_id: user.id,
-      workspace_id: workspace.id,
+      user_id: userId,
+      workspace_id: workspaceId,
       redirect_uri: params.redirect_uri!,
       scope: params.scope,
       code_challenge: params.code_challenge!,

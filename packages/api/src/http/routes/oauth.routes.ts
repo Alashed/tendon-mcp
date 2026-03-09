@@ -2,8 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getContainer } from '../../di/container.js';
 import { config } from '../../config/index.js';
-import { renderLoginPage } from '../../domains/oauth/loginPage.js';
 import { AppError } from '../../shared/errors/AppError.js';
+import { verifyAndUpsertClerkUser } from '../../shared/clerk/clerkAuth.js';
 
 export async function oauthRoutes(app: FastifyInstance): Promise<void> {
 
@@ -12,7 +12,8 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
     const base = config.apiBaseUrl;
     return reply.send({
       issuer: base,
-      authorization_endpoint: `${base}/oauth/authorize`,
+      // Authorization happens in the web app (Clerk auth)
+      authorization_endpoint: `${config.webBaseUrl}/oauth/authorize`,
       token_endpoint: `${base}/oauth/token`,
       registration_endpoint: `${base}/oauth/register`,
       introspection_endpoint: `${base}/oauth/introspect`,
@@ -49,7 +50,8 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // ── GET /oauth/authorize — Show login form ───────────────────────────────
+  // ── GET /oauth/authorize — Redirect to web app ───────────────────────────
+  // The actual consent UI lives at tracker.alashed.kz/oauth/authorize (Next.js)
   app.get('/oauth/authorize', async (request, reply) => {
     const params = request.query as Record<string, string>;
     const { oauthService } = getContainer();
@@ -61,26 +63,40 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ error: msg });
     }
 
-    return reply
-      .header('Content-Type', 'text/html; charset=utf-8')
-      .send(renderLoginPage(params));
+    const webUrl = new URL(`${config.webBaseUrl}/oauth/authorize`);
+    Object.entries(params).forEach(([k, v]) => webUrl.searchParams.set(k, v));
+    return reply.redirect(webUrl.toString());
   });
 
-  // ── POST /oauth/authorize — Process login + issue code ───────────────────
-  app.post('/oauth/authorize', async (request, reply) => {
+  // ── POST /oauth/consent — Issue code after Clerk auth ───────────────────
+  // Called by the web app after user approves in the Clerk-authenticated page
+  app.post('/oauth/consent', async (request, reply) => {
+    const authHeader = request.headers['authorization'];
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    if (!token) return reply.status(401).send({ error: 'Unauthorized' });
+
+    const { userRepository, workspaceRepository, oauthService } = getContainer();
+
+    let authResult;
+    try {
+      authResult = await verifyAndUpsertClerkUser(token, userRepository, workspaceRepository);
+    } catch {
+      return reply.status(401).send({ error: 'invalid_token' });
+    }
+
     const body = request.body as Record<string, string>;
-    const { oauthService } = getContainer();
 
     try {
-      const redirectUrl = await oauthService.processConsent(body);
-      return reply.redirect(redirectUrl);
+      const redirectUrl = await oauthService.processConsentWithUserId({
+        ...body,
+        user_id: authResult.user.id,
+        workspace_id: authResult.workspaceId,
+      });
+      return reply.send({ redirect_url: redirectUrl });
     } catch (err) {
-      const msg = err instanceof AppError ? err.message : 'Sign in failed';
-      const html = renderLoginPage(body, msg);
-      return reply
-        .status(400)
-        .header('Content-Type', 'text/html; charset=utf-8')
-        .send(html);
+      const msg = err instanceof AppError ? err.message : 'invalid_request';
+      return reply.status(400).send({ error: msg });
     }
   });
 

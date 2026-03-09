@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Syne, Outfit, JetBrains_Mono } from 'next/font/google';
+import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 
 const syne = Syne({
@@ -29,22 +30,20 @@ export const metadata: Metadata = {
     'Connect your task board to Claude Code in one command. No config files, no tokens, no friction.',
   openGraph: {
     title: 'Alashed Tracker',
-    description: 'Your tasks, in Claude\'s hands.',
+    description: "Your tasks, in Claude's hands.",
     siteName: 'Alashed',
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${syne.variable} ${outfit.variable} ${jetbrainsMono.variable}`}
-    >
-      <body>{children}</body>
-    </html>
+    <ClerkProvider>
+      <html
+        lang="en"
+        className={`${syne.variable} ${outfit.variable} ${jetbrainsMono.variable}`}
+      >
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
   );
 }

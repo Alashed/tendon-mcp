@@ -9,6 +9,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const migrations = [
   '001_initial_schema.sql',
   '002_oauth.sql',
+  '003_clerk_auth.sql',
 ];
 
 async function migrate(): Promise<void> {
