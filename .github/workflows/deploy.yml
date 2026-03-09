@@ -125,9 +125,9 @@ jobs:
       - name: Package & upload to S3
         run: |
           cd packages/web
-          mkdir -p .next/standalone/.next
-          cp -r public .next/standalone/public 2>/dev/null || true
-          cp -r .next/static .next/standalone/.next/static
+          mkdir -p .next/standalone/packages/web/.next
+          cp -r .next/static .next/standalone/packages/web/.next/static
+          cp -r public .next/standalone/packages/web/public 2>/dev/null || true
           tar -czf /tmp/web.tar.gz -C .next/standalone .
           aws s3 cp /tmp/web.tar.gz s3://${{ env.S3_BUCKET }}/deployments/web.tar.gz
 

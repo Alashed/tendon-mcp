@@ -18,10 +18,11 @@ cd "$REPO_ROOT/packages/web"
 npm run build
 
 echo "==> Preparing standalone bundle…"
-# Copy public assets and static files into the standalone output
-cp -r public .next/standalone/public 2>/dev/null || true
-mkdir -p .next/standalone/.next
-cp -r .next/static .next/standalone/.next/static
+# server.js lives at standalone/packages/web/server.js
+# so static and public must be next to it
+mkdir -p .next/standalone/packages/web/.next
+cp -r .next/static .next/standalone/packages/web/.next/static
+cp -r public .next/standalone/packages/web/public 2>/dev/null || true
 
 echo "==> Packaging…"
 tar -czf /tmp/web.tar.gz -C .next/standalone .
