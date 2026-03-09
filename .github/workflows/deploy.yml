@@ -3,6 +3,7 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 env:
   REGION: eu-north-1
@@ -13,10 +14,6 @@ jobs:
   deploy-api:
     name: Deploy API
     runs-on: ubuntu-latest
-    if: |
-      contains(github.event.head_commit.modified, 'packages/api') ||
-      contains(github.event.head_commit.added, 'packages/api') ||
-      github.event_name == 'workflow_dispatch'
 
     steps:
       - uses: actions/checkout@v4
@@ -93,10 +90,6 @@ jobs:
   deploy-web:
     name: Deploy Web
     runs-on: ubuntu-latest
-    if: |
-      contains(github.event.head_commit.modified, 'packages/web') ||
-      contains(github.event.head_commit.added, 'packages/web') ||
-      github.event_name == 'workflow_dispatch'
 
     steps:
       - uses: actions/checkout@v4
