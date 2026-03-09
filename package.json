@@ -8,10 +8,12 @@
   "scripts": {
     "dev:api": "npm run dev --workspace=packages/api",
     "dev:mcp": "npm run dev --workspace=packages/mcp",
+    "dev:web": "npm run dev --workspace=packages/web",
     "build:shared": "npm run build --workspace=packages/shared",
     "build:api": "npm run build:shared && npm run build --workspace=packages/api",
     "build:mcp": "npm run build:shared && npm run build --workspace=packages/mcp",
-    "build": "npm run build:shared && npm run build --workspace=packages/api && npm run build --workspace=packages/mcp",
+    "build:web": "npm run build --workspace=packages/web",
+    "build": "npm run build:shared && npm run build --workspace=packages/api && npm run build --workspace=packages/mcp && npm run build --workspace=packages/web",
     "typecheck": "npm run build:shared && npm run typecheck --workspace=packages/api && npm run typecheck --workspace=packages/mcp"
   },
   "engines": {
