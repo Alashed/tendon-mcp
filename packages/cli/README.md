@@ -56,22 +56,18 @@ Requires [Docker Desktop](https://www.docker.com/products/docker-desktop) to be 
 
 ## After setup
 
-The wizard prints the command to connect Claude Code:
-
+**1. Add MCP** (if tendon isn't in Claude yet):
 ```bash
 claude mcp add --transport http tendon http://localhost:3002
 ```
 
-**In terminal** — check API connectivity (no auth):
+**2. In Claude Code** — type `tendon whoami`. Browser opens for auth → complete login.
+
+**Terminal health check:**
 ```bash
 tendon whoami
 ```
-
-**In Claude Code chat** — verify your auth & workspace:
-```
-tendon whoami
-```
-A browser will open automatically → click **Allow** → connection confirmed.
+Shows API status and next steps (open Claude → type tendon whoami).
 
 ---
 

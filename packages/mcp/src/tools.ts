@@ -48,7 +48,7 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
 
   server.tool(
     'whoami',
-    'Verify the connection to Tendon and show your current workspace, user info, and task counts. Call this first to confirm everything is working.',
+    'Verify connection to Tendon. If not yet authenticated, a browser will open for OAuth login — complete it, then retry. Returns user, workspace, and task counts once connected.',
     {},
     async () => {
       const me = await api.get<{

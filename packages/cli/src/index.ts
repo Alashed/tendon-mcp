@@ -265,15 +265,15 @@ async function cmdWhoami(): Promise<void> {
     if (r.ok) hostedHealth = (await r.json()) as { clerkConfigured?: boolean };
   } catch { /* ignore */ }
 
+  const mcpUrl = localOk ? MCP_URL : HOSTED_MCP;
+
   if (localOk) {
     console.log(pc.green('  ✓ Local API running') + pc.dim(` (${API_URL})`));
-    console.log(pc.dim('    MCP: ') + pc.cyan(`claude mcp add --transport http tendon ${MCP_URL}`));
   } else if (hostedOk) {
     console.log(pc.green('  ✓ Hosted API reachable') + pc.dim(` (${HOSTED_API})`));
     if (hostedHealth?.clerkConfigured === false) {
       console.log(pc.yellow('  ⚠ API: Clerk not configured (contact support)'));
     }
-    console.log(pc.dim('    MCP: ') + pc.cyan(`claude mcp add --transport http tendon ${HOSTED_MCP}`));
   } else {
     console.log(pc.red('  ✗ No Tendon API reachable'));
     console.log(pc.dim('    Local: ') + API_URL);
@@ -284,8 +284,15 @@ async function cmdWhoami(): Promise<void> {
   }
 
   console.log('');
-  console.log(pc.dim('  To verify YOUR auth and workspace, open Claude Code and type:'));
-  console.log(pc.cyan('    tendon whoami'));
+  console.log(pc.bold('  Next: connect Claude'));
+  console.log('');
+  console.log(pc.dim('  1. Open Claude Code'));
+  console.log(pc.dim('  2. Settings → Tools → ensure server "tendon" is enabled'));
+  console.log(pc.dim('  3. In chat, type: ') + pc.cyan('tendon whoami'));
+  console.log(pc.dim('     → A browser opens for login; complete auth'));
+  console.log('');
+  console.log(pc.dim('  If tendon is not in Claude yet:'));
+  console.log(pc.cyan(`    claude mcp add --transport http tendon ${mcpUrl}`));
   console.log('');
 }
 

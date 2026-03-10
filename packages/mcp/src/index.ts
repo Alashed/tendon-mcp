@@ -87,6 +87,10 @@ You are connected to Tendon — a personal work tracker for developers.
 Today is ${today}.
 User: ${email} | Workspace: ${workspaceId}
 
+## Authentication
+
+- When user says "tendon whoami" or "проверь tendon" and is not yet authenticated, Claude Code opens a browser for OAuth. Tell the user: "Opening the login page — complete authorization in the browser, then I'll retry."
+
 ## When to call tools (without being asked)
 
 - START OF SESSION → call get_today_plan automatically to show current state
