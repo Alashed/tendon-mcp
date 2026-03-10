@@ -1,0 +1,18 @@
+---
+description: When user asks about tendon/MCP and it's not connected — run add command automatically
+alwaysApply: true
+---
+
+# Tendon MCP — auto-connect
+
+When the user says "tendon whoami", "connect tendon", "подключи tendon", or asks to use Tendon, and the tendon MCP tools (get_today_plan, start_focus_session, whoami) are **not available** in this session:
+
+**1. If you have NOT run the add command in this conversation yet:**
+   - Run in terminal: `claude mcp remove tendon 2>/dev/null; claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp`
+   - Say: "Добавил tendon. Перезапусти Claude Code, потом напиши `tendon whoami` — откроется браузер для входа."
+
+**2. If you already ran add in this conversation and the user says tendon still doesn't work / Failed to connect:**
+   - Do NOT run add/remove again.
+   - Say: "Я попытался переподключить tendon, но сервер всё ещё не отвечает. Возможно, временные проблемы — попробуй позже или проверь: curl https://mcp.tendon.alashed.kz/health"
+
+Do NOT tell the user to "go to Settings" or "run the command yourself" — do it yourself via terminal.

@@ -253,14 +253,14 @@ async function cmdWhoami(): Promise<void> {
 
   let localOk = false;
   try {
-    const r = await fetch(`${API_URL}/health`);
+    const r = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(5000) });
     localOk = r.ok;
   } catch { /* ignore */ }
 
   let hostedOk = false;
   let hostedHealth: { clerkConfigured?: boolean } | null = null;
   try {
-    const r = await fetch(`${HOSTED_API}/health`);
+    const r = await fetch(`${HOSTED_API}/health`, { signal: AbortSignal.timeout(8000) });
     hostedOk = r.ok;
     if (r.ok) hostedHealth = (await r.json()) as { clerkConfigured?: boolean };
   } catch { /* ignore */ }
@@ -279,7 +279,8 @@ async function cmdWhoami(): Promise<void> {
     console.log(pc.dim('    Local: ') + API_URL);
     console.log(pc.dim('    Hosted: ') + HOSTED_API);
     console.log('');
-    console.log(pc.dim('  Run ') + pc.cyan('npx tendon-cli') + pc.dim(' to set up locally, or use the hosted version.'));
+    console.log(pc.dim('  Check: ') + pc.cyan('curl https://api.tendon.alashed.kz/health'));
+    console.log(pc.dim('  Or run ') + pc.cyan('npx tendon-cli') + pc.dim(' to set up locally.'));
     process.exit(1);
   }
 
