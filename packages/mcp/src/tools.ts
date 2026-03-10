@@ -3,6 +3,47 @@ import { z } from 'zod';
 import type { ApiClient } from './api-client.js';
 import type { Task, Activity } from '@alashed/shared';
 
+// ── ASCII helpers ─────────────────────────────────────────────────────────────
+
+function fmtTime(minutes: number): string {
+  if (minutes === 0) return '0m';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h ${m > 0 ? `${m}m` : ''}`.trim() : `${m}m`;
+}
+
+function bar(minutes: number, maxMinutes = 480, width = 12): string {
+  const pct = Math.min(minutes / maxMinutes, 1);
+  const filled = Math.round(pct * width);
+  return '█'.repeat(filled) + '░'.repeat(width - filled);
+}
+
+function pad(str: string, len: number): string {
+  return str.length >= len ? str.slice(0, len) : str + ' '.repeat(len - str.length);
+}
+
+const PRIO_ICON: Record<string, string> = { high: '!!', medium: ' !', low: '  ' };
+const STATUS_ICON: Record<string, string> = {
+  planned: '○', in_progress: '●', done: '✓', archived: '×',
+};
+
+function header(title: string): string {
+  const line = '─'.repeat(title.length + 4);
+  return `╭${line}╮\n│  ${title}  │\n╰${line}╯`;
+}
+
+function section(icon: string, label: string): string {
+  return `\n${icon} ${label}`;
+}
+
+function taskLine(t: { title: string; priority: string }, prefix = '  ├─', isLast = false): string {
+  const p = prefix.replace('├', isLast ? '└' : '├');
+  const prio = PRIO_ICON[t.priority] ?? '  ';
+  return `${p} ${pad(t.title, 36)} [${prio}]`;
+}
+
+// ── Tools ─────────────────────────────────────────────────────────────────────
+
 export function registerTools(server: McpServer, api: ApiClient, workspaceId: string, userId: string): void {
 
   server.tool(
@@ -21,9 +62,15 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
         title, description, priority, due_date, project_id,
         source: 'claude',
       });
-      return {
-        content: [{ type: 'text' as const, text: `✅ Task created: "${task.title}" [${task.priority}] (ID: ${task.id})` }],
-      };
+      const lines = [
+        `✓  Task created`,
+        `   ${task.title}`,
+        `   Priority : ${task.priority}`,
+        `   Status   : ${task.status}`,
+        `   ID       : ${task.id}`,
+      ];
+      if (task.due_date) lines.push(`   Due      : ${task.due_date}`);
+      return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
     },
   );
 
@@ -35,13 +82,27 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
     },
     async ({ status }) => {
       const tasks = await api.get<Task[]>(`/tasks?workspace_id=${workspaceId}${status ? `&status=${status}` : ''}`);
-      if (!tasks.length) return { content: [{ type: 'text' as const, text: 'No tasks found' }] };
+      if (!tasks.length) {
+        return { content: [{ type: 'text' as const, text: '○  No tasks found.' }] };
+      }
 
-      const lines = tasks.map(t => {
-        const due = t.due_date ? ` (due: ${t.due_date})` : '';
-        return `- [${t.status}] ${t.title} [${t.priority}]${due} — ID: ${t.id}`;
-      });
-      return { content: [{ type: 'text' as const, text: `Tasks (${tasks.length}):\n${lines.join('\n')}` }] };
+      const label = status ? `${STATUS_ICON[status] ?? '○'} ${status.toUpperCase().replace('_', ' ')} (${tasks.length})` : `Tasks  (${tasks.length})`;
+      const lines = [header(label)];
+
+      const grouped: Record<string, Task[]> = { in_progress: [], planned: [], done: [] };
+      for (const t of tasks) {
+        (grouped[t.status] ?? grouped['planned']!).push(t);
+      }
+
+      const order = status ? [status] : ['in_progress', 'planned', 'done'];
+      for (const s of order) {
+        const group = grouped[s] ?? [];
+        if (!group.length) continue;
+        if (!status) lines.push(section(STATUS_ICON[s] ?? '○', s.replace('_', ' ')));
+        group.forEach((t, i) => lines.push(taskLine(t, '  ├─', i === group.length - 1)));
+      }
+
+      return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
     },
   );
 
@@ -54,7 +115,14 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
     },
     async ({ task_id, status }) => {
       const task = await api.patch<Task>(`/tasks/${task_id}`, { status });
-      return { content: [{ type: 'text' as const, text: `✅ "${task.title}" → ${status}` }] };
+      const prev = Object.keys(STATUS_ICON).find(s => s !== status) ?? '?';
+      void prev;
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `✓  ${task.title}\n   → ${status.replace('_', ' ')}`,
+        }],
+      };
     },
   );
 
@@ -70,9 +138,22 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
         task_id,
         source: 'claude',
       });
-      return {
-        content: [{ type: 'text' as const, text: `⏱ Focus started${task_id ? ' on task' : ''}. Session ID: ${activity.id}` }],
-      };
+
+      let taskTitle = 'General focus';
+      if (task_id) {
+        try {
+          const t = await api.get<Task>(`/tasks/${task_id}`);
+          taskTitle = t.title;
+        } catch { /* ignore */ }
+      }
+
+      const lines = [
+        `▶  Focus started`,
+        `   Task  : ${taskTitle}`,
+        `   Since : ${new Date(activity.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        `   ID    : ${activity.id}`,
+      ];
+      return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
     },
   );
 
@@ -82,12 +163,21 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
     {},
     async () => {
       const activity = await api.post<Activity | null>('/activities/stop', { workspace_id: workspaceId });
-      if (!activity) return { content: [{ type: 'text' as const, text: 'No active session' }] };
+      if (!activity) {
+        return { content: [{ type: 'text' as const, text: '○  No active session to stop.' }] };
+      }
 
       const mins = activity.end_time
         ? Math.round((new Date(activity.end_time).getTime() - new Date(activity.start_time).getTime()) / 60000)
         : 0;
-      return { content: [{ type: 'text' as const, text: `⏹ Session stopped. Duration: ${mins} min` }] };
+
+      const lines = [
+        `■  Session stopped`,
+        `   Duration : ${fmtTime(mins)}`,
+        `   From     : ${new Date(activity.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+        `   To       : ${activity.end_time ? new Date(activity.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now'}`,
+      ];
+      return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
     },
   );
 
@@ -97,6 +187,8 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
     {},
     async () => {
       const today = new Date().toISOString().split('T')[0]!;
+      const dayLabel = new Date().toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
+
       const [inProgress, planned, activities] = await Promise.all([
         api.get<Task[]>(`/tasks?workspace_id=${workspaceId}&status=in_progress`),
         api.get<Task[]>(`/tasks?workspace_id=${workspaceId}&status=planned`),
@@ -108,21 +200,28 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
         return sum + Math.round((end.getTime() - new Date(a.start_time).getTime()) / 60000);
       }, 0);
 
-      const h = Math.floor(totalMins / 60);
-      const m = totalMins % 60;
-      const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
-
       const lines = [
-        `📅 Today (${today})`,
+        header(`📅 Today — ${dayLabel}`),
         '',
-        `🔥 In Progress (${inProgress.length}):`,
-        ...inProgress.map(t => `  • ${t.title} [${t.priority}]`),
-        '',
-        `📋 Planned (${planned.length}):`,
-        ...planned.slice(0, 5).map(t => `  • ${t.title} [${t.priority}]`),
-        '',
-        `⏱ Time tracked: ${timeStr} across ${activities.length} session(s)`,
+        `  ⏱  ${fmtTime(totalMins)}  ${bar(totalMins)}  ${activities.length} session${activities.length !== 1 ? 's' : ''}`,
       ];
+
+      if (inProgress.length > 0) {
+        lines.push(section('●', `IN PROGRESS  (${inProgress.length})`));
+        inProgress.forEach((t, i) => lines.push(taskLine(t, '  ├─', i === inProgress.length - 1)));
+      }
+
+      if (planned.length > 0) {
+        const shown = planned.slice(0, 7);
+        const rest = planned.length - shown.length;
+        lines.push(section('○', `PLANNED  (${planned.length})`));
+        shown.forEach((t, i) => lines.push(taskLine(t, '  ├─', i === shown.length - 1 && rest === 0)));
+        if (rest > 0) lines.push(`  └─ ... +${rest} more`);
+      }
+
+      if (inProgress.length === 0 && planned.length === 0) {
+        lines.push('\n  No tasks yet. Ask me to create some!');
+      }
 
       return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
     },
@@ -139,7 +238,12 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
       const task = await api.get<Task>(`/tasks/${task_id}`);
       const existing = task.description ? task.description + '\n' : '';
       await api.patch<Task>(`/tasks/${task_id}`, { description: `${existing}[BLOCKER] ${text}` });
-      return { content: [{ type: 'text' as const, text: `🚧 Blocker logged: "${text}"` }] };
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `⚠  Blocker logged\n   Task : ${task.title}\n   Note : ${text}`,
+        }],
+      };
     },
   );
 
@@ -175,30 +279,42 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
 
       const me = report.users[0];
       if (!me) {
-        return { content: [{ type: 'text' as const, text: `No activity recorded on ${resolvedDate}.` }] };
+        return {
+          content: [{ type: 'text' as const, text: `○  No activity recorded on ${resolvedDate}.` }],
+        };
       }
 
-      const h = Math.floor(me.focus_minutes / 60);
-      const m = me.focus_minutes % 60;
-      const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+      const dayLabel = new Date(resolvedDate + 'T12:00:00Z').toLocaleDateString('en', {
+        weekday: 'short', month: 'short', day: 'numeric',
+      });
 
       const lines = [
-        `📅 Summary for ${resolvedDate}`,
+        header(`Daily Summary — ${dayLabel}`),
         '',
-        `⏱ Focus time: ${timeStr} across ${me.session_count} session(s)`,
+        `  ⏱  ${pad(fmtTime(me.focus_minutes), 8)} ${bar(me.focus_minutes)}  ${me.session_count} session${me.session_count !== 1 ? 's' : ''}`,
+        `  ✓  ${me.tasks_done_today.length} done today`,
+        `  ●  ${me.tasks_in_progress.length} in progress`,
+        `  ○  ${me.tasks_planned.length} planned`,
       ];
 
       if (me.tasks_done_today.length > 0) {
-        lines.push('', `✅ Completed today (${me.tasks_done_today.length}):`);
-        me.tasks_done_today.forEach(t => lines.push(`  • ${t.title} [${t.priority}]`));
+        lines.push(section('✓', `COMPLETED TODAY  (${me.tasks_done_today.length})`));
+        me.tasks_done_today.forEach((t, i) =>
+          lines.push(taskLine(t, '  ├─', i === me.tasks_done_today.length - 1)));
       }
+
       if (me.tasks_in_progress.length > 0) {
-        lines.push('', `🔥 In progress (${me.tasks_in_progress.length}):`);
-        me.tasks_in_progress.forEach(t => lines.push(`  • ${t.title} [${t.priority}] — ID: ${t.id}`));
+        lines.push(section('●', `IN PROGRESS  (${me.tasks_in_progress.length})`));
+        me.tasks_in_progress.forEach((t, i) =>
+          lines.push(taskLine(t, '  ├─', i === me.tasks_in_progress.length - 1)));
       }
+
       if (me.tasks_planned.length > 0) {
-        lines.push('', `📋 Still planned (${me.tasks_planned.length}):`);
-        me.tasks_planned.slice(0, 5).forEach(t => lines.push(`  • ${t.title}`));
+        const shown = me.tasks_planned.slice(0, 5);
+        const rest = me.tasks_planned.length - shown.length;
+        lines.push(section('○', `STILL PLANNED  (${me.tasks_planned.length})`));
+        shown.forEach((t, i) => lines.push(taskLine(t, '  ├─', i === shown.length - 1 && rest === 0)));
+        if (rest > 0) lines.push(`  └─ ... +${rest} more`);
       }
 
       return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
