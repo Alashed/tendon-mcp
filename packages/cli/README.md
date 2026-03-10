@@ -62,28 +62,29 @@ The wizard prints the command to connect Claude Code:
 claude mcp add --transport http tendon http://localhost:3002
 ```
 
-Run it, then open **Claude Code** and in the chat (not in terminal) type:
+Run it, then open **Claude Code** and in the chat type:
 
 ```
 tendon whoami
 ```
 
-Claude will call the tool, open a browser if needed → click **Allow** → connection confirmed.
+A browser will open automatically → click **Allow** → connection confirmed.
 
 ---
 
-## First things to say in Claude
+## First things to say
+
+Natural language works everywhere (Claude Code, Cursor):
 
 ```
-/morning                                    — start your day
-"create 3 tasks for today"                  — bulk task creation
-"start focus on [task]"                     — begin time tracking
-"mark [task] as done"                       — complete a task
-"what did I do yesterday?"                  — daily summary
-/wrap_up                                    — end of day recap
-/standup                                    — yesterday / today / blockers
-/review                                     — weekly productivity review
+"Show today's plan and start focus on first task"
+"create 3 tasks for today"
+"start focus on [task]"
+"what did I do yesterday?"
+"wrap up — stop tracking and summarize"
 ```
+
+Claude Code also has slash prompts: `/morning`, `/wrap_up`, `/standup`, `/review`.
 
 ---
 

@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getActivities, getTasks, type Activity, type Task } from '@/lib/api';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
+
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -27,64 +29,66 @@ const DATES = [0, 1, 2, 3, 4, 5, 6].map((d) => {
   return date.toISOString().split('T')[0];
 });
 
+interface Workspace {
+  id: string;
+  name: string;
+  type: 'personal' | 'team';
+}
+
 export default function SessionsPage() {
   const { getToken } = useAuth();
+
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [workspaceId, setWorkspaceId] = useState('');
   const [activities, setActivities] = useState<Activity[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [workspaceId, setWorkspaceId] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(DATES[0]);
 
-  const fetchBase = useCallback(async () => {
-    const token = await getToken();
-    if (!token) { setLoading(false); return null; }
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
-      const res = await fetch(`${apiUrl}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) { setLoading(false); return null; }
-      const { data } = await res.json();
-      const ws = data.workspaces?.find((w: { type: string }) => w.type === 'personal') ?? data.workspaces?.[0];
-      if (!ws) { setLoading(false); return null; }
-      setWorkspaceId(ws.id);
-      const list = await getTasks(ws.id, token);
-      setTasks(list);
-      return { ws, token };
-    } catch { setLoading(false); return null; }
+  // Load workspaces once
+  useEffect(() => {
+    const load = async () => {
+      const token = await getToken();
+      if (!token) { setLoading(false); return; }
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) { setLoading(false); return; }
+        const { data } = await res.json();
+        const list: Workspace[] = data.workspaces ?? [];
+        setWorkspaces(list);
+        const personal = list.find((w) => w.type === 'personal') ?? list[0];
+        if (personal) setWorkspaceId(personal.id);
+        else setLoading(false);
+      } catch { setLoading(false); }
+    };
+    load();
   }, [getToken]);
 
-  const fetchActivities = useCallback(async (wsId: string, token: string, date: string) => {
+  const fetchData = useCallback(async (wsId: string, date: string) => {
+    const token = await getToken();
+    if (!token || !wsId) return;
+    setLoading(true);
     try {
-      const acts = await getActivities(wsId, token, date);
+      const [taskList, acts] = await Promise.all([
+        getTasks(wsId, token),
+        getActivities(wsId, token, date),
+      ]);
+      setTasks(taskList);
       setActivities(acts);
-    } catch { /* ignore */ }
-  }, []);
+    } catch { /* ignore */ } finally { setLoading(false); }
+  }, [getToken]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const base = await fetchBase();
-      if (!base || cancelled) return;
-      await fetchActivities(base.ws.id, base.token, selectedDate);
-      if (!cancelled) setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [fetchBase, fetchActivities, selectedDate]);
+    if (workspaceId) fetchData(workspaceId, selectedDate);
+  }, [workspaceId, selectedDate, fetchData]);
 
-  useEffect(() => {
-    if (!workspaceId) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const token = await getToken();
-      if (!token || cancelled) return;
-      await fetchActivities(workspaceId, token, selectedDate);
-      if (!cancelled) setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [selectedDate, workspaceId, getToken, fetchActivities]);
+  const switchWorkspace = (id: string) => {
+    if (id === workspaceId) return;
+    setActivities([]);
+    setWorkspaceId(id);
+  };
 
   const completed = activities.filter((a) => a.end_time);
   const totalSec = completed.reduce((acc, a) => {
@@ -93,7 +97,6 @@ export default function SessionsPage() {
 
   const taskMap = new Map(tasks.map((t) => [t.id, t]));
 
-  // Group by task
   const byTask = new Map<string, { label: string; seconds: number; count: number }>();
   for (const act of completed) {
     const key = act.task_id ?? '__general__';
@@ -118,6 +121,29 @@ export default function SessionsPage() {
           Your focus session history. See where your time goes.
         </p>
       </div>
+
+      {/* Workspace switcher */}
+      {workspaces.length > 1 && (
+        <div className="flex gap-1 p-1 rounded-lg w-fit mb-6" style={{ background: 'var(--surface)' }}>
+          {workspaces.map((ws) => (
+            <button
+              key={ws.id}
+              onClick={() => switchWorkspace(ws.id)}
+              className="px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5"
+              style={{
+                background: workspaceId === ws.id ? 'var(--surface-2)' : 'transparent',
+                color: workspaceId === ws.id ? 'var(--text)' : 'var(--muted)',
+              }}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: workspaceId === ws.id ? 'var(--accent)' : 'var(--subtle)' }}
+              />
+              {ws.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Date picker */}
       <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">

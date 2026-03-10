@@ -54,13 +54,16 @@ export default function LandingPage() {
           className="font-display font-bold leading-[1.05] tracking-tight mb-6"
           style={{ fontSize: 'clamp(2.8rem, 7vw, 4.5rem)' }}
         >
-          Work context<br />
-          <span className="text-shimmer">for Claude Code.</span>
+          Auto-tracks your work.<br />
+          <span className="text-shimmer">Daily plan. Every day.</span>
         </h1>
 
-        <p className="text-lg leading-relaxed mb-12 max-w-xl" style={{ color: 'var(--muted)' }}>
-          Tendon tracks your tasks, focus sessions, and daily work — and delivers
-          that context to Claude so it always knows what you&apos;re building and what matters next.
+        <p className="text-lg leading-relaxed mb-4 max-w-xl" style={{ color: 'var(--muted)' }}>
+          Tendon collects everything you do in Claude Code and delivers a clear daily report and plan.
+          No manual input. No context switching.
+        </p>
+        <p className="text-base leading-relaxed mb-12 max-w-xl" style={{ color: 'var(--subtle)' }}>
+          Web to see the full picture. Telegram to get the daily digest.
         </p>
 
         {/* ── Two paths ─────────────────────── */}
@@ -184,20 +187,20 @@ export default function LandingPage() {
         <div className="space-y-8">
           {[
             {
-              label: 'Tracks context Claude doesn\'t have',
-              body: 'Claude knows your code but not your workload. Tendon bridges that gap — tasks, priorities, time logs, blockers — all accessible to Claude via MCP tools.',
+              label: 'Auto-collects everything from Claude Code',
+              body: 'Tasks you create, focus sessions you start, blockers you log — all captured automatically. No separate app, no manual tracking.',
             },
             {
-              label: 'Zero friction time logging',
-              body: '"Start focus on the auth bug" starts a timer. "Done" stops it and marks the task. No apps to switch to, no forms to fill.',
+              label: 'Daily report and plan, every morning',
+              body: '/morning gives you yesterday\'s summary and today\'s prioritized plan. Claude pulls real data and tells you exactly what to focus on first.',
             },
             {
-              label: 'Daily summaries, standups, week reviews',
-              body: 'Built-in prompts: /morning, /wrap_up, /standup, /review. Claude pulls real data from your workspace and writes the summary for you.',
+              label: 'Telegram digest — no need to open anything',
+              body: 'Every evening: what you built, how long you focused, what\'s next. For teams: per-member summary drops into your shared chat.',
             },
             {
-              label: 'Works for teams',
-              body: 'Invite teammates to a shared workspace. Everyone connects Claude to the same workspace. A lead can run /today and see what the whole team is working on.',
+              label: 'Web dashboard for the full picture',
+              body: 'See your task timeline, focus session history, and weekly breakdown. Team leads get per-member analytics and can see who\'s blocked.',
             },
           ].map(({ label, body }) => (
             <div key={label} className="flex gap-6">

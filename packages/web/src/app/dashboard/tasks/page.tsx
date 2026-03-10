@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getTasks, createTask, updateTask, deleteTask, type Task } from '@/lib/api';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
+
 const STATUS_CYCLE: Record<Task['status'], Task['status']> = {
   planned: 'in_progress',
   in_progress: 'done',
@@ -33,35 +35,65 @@ const PRIORITY_BADGE: Record<NonNullable<Task['priority']>, { bg: string; color:
 
 type FilterStatus = 'all' | Task['status'];
 
+interface Workspace {
+  id: string;
+  name: string;
+  type: 'personal' | 'team';
+}
+
 export default function TasksPage() {
   const { getToken } = useAuth();
-  const [tasks, setTasks] = useState<Task[]>([]);
+
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState('');
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState('');
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  // Load workspaces once
+  useEffect(() => {
+    const load = async () => {
+      const token = await getToken();
+      if (!token) { setLoading(false); return; }
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) { setLoading(false); return; }
+        const { data } = await res.json();
+        const list: Workspace[] = data.workspaces ?? [];
+        setWorkspaces(list);
+        const personal = list.find((w) => w.type === 'personal') ?? list[0];
+        if (personal) setWorkspaceId(personal.id);
+        else setLoading(false);
+      } catch { setLoading(false); }
+    };
+    load();
+  }, [getToken]);
+
+  const fetchTasks = useCallback(async (wsId: string) => {
     const token = await getToken();
-    if (!token) { setLoading(false); return; }
+    if (!token || !wsId) return;
+    setLoading(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
-      const res = await fetch(`${apiUrl}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) { setLoading(false); return; }
-      const { data } = await res.json();
-      const ws = data.workspaces?.find((w: { type: string }) => w.type === 'personal') ?? data.workspaces?.[0];
-      if (!ws) { setLoading(false); return; }
-      setWorkspaceId(ws.id);
-      const list = await getTasks(ws.id, token);
+      const list = await getTasks(wsId, token);
       setTasks(list);
     } catch { /* ignore */ } finally { setLoading(false); }
   }, [getToken]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    if (workspaceId) fetchTasks(workspaceId);
+  }, [workspaceId, fetchTasks]);
+
+  const switchWorkspace = (id: string) => {
+    if (id === workspaceId) return;
+    setTasks([]);
+    setFilter('all');
+    setWorkspaceId(id);
+  };
 
   const addTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +158,29 @@ export default function TasksPage() {
         </p>
       </div>
 
+      {/* Workspace switcher */}
+      {workspaces.length > 1 && (
+        <div className="flex gap-1 p-1 rounded-lg w-fit mb-6" style={{ background: 'var(--surface)' }}>
+          {workspaces.map((ws) => (
+            <button
+              key={ws.id}
+              onClick={() => switchWorkspace(ws.id)}
+              className="px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5"
+              style={{
+                background: workspaceId === ws.id ? 'var(--surface-2)' : 'transparent',
+                color: workspaceId === ws.id ? 'var(--text)' : 'var(--muted)',
+              }}
+            >
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: workspaceId === ws.id ? 'var(--accent)' : 'var(--subtle)' }}
+              />
+              {ws.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Add task */}
       <form onSubmit={addTask} className="flex gap-2 mb-6">
         <input
@@ -176,10 +231,7 @@ export default function TasksPage() {
       ) : (
         <div className="space-y-2">
           {filtered.map((task) => (
-            <div
-              key={task.id}
-              className="card flex items-center gap-3 px-4 py-3 group"
-            >
+            <div key={task.id} className="card flex items-center gap-3 px-4 py-3 group">
               {/* Status dot */}
               <button
                 onClick={() => cycleStatus(task)}
@@ -231,7 +283,7 @@ export default function TasksPage() {
                   <span className="text-xs">…</span>
                 ) : (
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                 )}
               </button>
