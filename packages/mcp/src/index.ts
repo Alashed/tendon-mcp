@@ -25,7 +25,7 @@ app.get('/.well-known/oauth-protected-resource', (_req, res) => {
 
 // ── Health ───────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'alashed-mcp', ts: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'tendon-mcp', ts: new Date().toISOString() });
 });
 
 // ── MCP endpoint ─────────────────────────────────────────────────────────
@@ -53,7 +53,7 @@ app.post('/mcp', async (req, res) => {
   const workspaceId = (req.headers['x-workspace-id'] as string) ?? tokenInfo.workspace_id;
   const api = new ApiClient(API_URL, token);
 
-  const server = new McpServer({ name: 'alashed-tracker', version: '1.0.0' });
+  const server = new McpServer({ name: 'tendon', version: '1.0.0' });
   registerTools(server, api, workspaceId);
 
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });

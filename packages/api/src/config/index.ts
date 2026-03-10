@@ -24,7 +24,7 @@ export const config = {
     url: process.env['DATABASE_URL'],
     host: optional('DB_HOST', 'localhost'),
     port: parseInt(optional('DB_PORT', '5432'), 10),
-    name: optional('DB_NAME', 'alashed_tracker'),
+    name: optional('DB_NAME', 'tendon'),
     user: optional('DB_USER', 'postgres'),
     password: optional('DB_PASSWORD', 'postgres'),
     ssl: optional('DB_SSL', 'false') === 'true',
@@ -38,6 +38,7 @@ export const config = {
   mcpBaseUrl: optional('MCP_BASE_URL', 'http://localhost:3002'),
   webBaseUrl: optional('WEB_BASE_URL', 'http://localhost:3000'),
   clerkSecretKey: optional('CLERK_SECRET_KEY', ''),
+  telegramBotToken: optional('TELEGRAM_BOT_TOKEN', ''),
 } as const;
 
 export function validateConfig(): void {

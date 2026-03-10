@@ -51,7 +51,7 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── GET /oauth/authorize — Redirect to web app ───────────────────────────
-  // The actual consent UI lives at tracker.alashed.kz/oauth/authorize (Next.js)
+  // The actual consent UI lives at tendon.alashed.kz/oauth/authorize (Next.js)
   app.get('/oauth/authorize', async (request, reply) => {
     const params = request.query as Record<string, string>;
     const { oauthService } = getContainer();

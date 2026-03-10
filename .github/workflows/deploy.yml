@@ -60,7 +60,8 @@ jobs:
               'rm api.tar.gz',
               'npm install --omit=dev --prefer-offline 2>/dev/null || npm install --omit=dev',
               'node dist/scripts/migrate.js',
-              'pm2 restart alashed-tracker-api',
+              'pm2 delete tendon-api 2>/dev/null || true',
+              'TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }} CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} pm2 start /home/ubuntu/alashed-tracker/ecosystem.config.cjs',
               'pm2 save',
               'echo DONE'
             ]" \
@@ -145,8 +146,8 @@ jobs:
               'rm -rf node_modules packages .next public package.json',
               'tar -xzf web.tar.gz',
               'rm web.tar.gz',
-              'pm2 delete alashed-web 2>/dev/null || true',
-              'PORT=3030 CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} pm2 start /home/ubuntu/apps/alashed-web/packages/web/server.js --name alashed-web --cwd /home/ubuntu/apps/alashed-web/packages/web',
+              'pm2 delete tendon-web 2>/dev/null || true',
+              'PORT=3030 CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} pm2 start /home/ubuntu/apps/alashed-web/packages/web/server.js --name tendon-web --cwd /home/ubuntu/apps/alashed-web/packages/web',
               'pm2 save',
               'echo DONE'
             ]" \

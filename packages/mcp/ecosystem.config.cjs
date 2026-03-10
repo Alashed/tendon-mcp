@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'alashed-mcp',
+      name: 'tendon-mcp',
       script: 'dist/index.js',
       instances: 1,
       exec_mode: 'fork',
