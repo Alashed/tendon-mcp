@@ -62,13 +62,13 @@ The wizard prints the command to connect Claude Code:
 claude mcp add --transport http tendon http://localhost:3002
 ```
 
-Run it, open Claude Code, and type:
+Run it, then open **Claude Code** and in the chat (not in terminal) type:
 
 ```
 tendon whoami
 ```
 
-Claude will open a browser → click **Allow** → connection confirmed.
+Claude will call the tool, open a browser if needed → click **Allow** → connection confirmed.
 
 ---
 

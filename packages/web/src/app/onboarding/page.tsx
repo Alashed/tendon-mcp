@@ -155,7 +155,7 @@ export default function OnboardingPage() {
               <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
                 {connected === true
                   ? 'Your workspace is live. You can start using Tendon tools.'
-                  : 'Say this — Claude will call the Tendon API and confirm the connection.'}
+                  : 'Type this in Claude Code chat (not in terminal) — Claude will call the API.'}
               </p>
             </div>
           </div>
