@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import { z } from 'zod';
 import { getContainer } from '../../di/container.js';
 import { ConflictError, UnauthorizedError } from '../../shared/errors/AppError.js';
+import { authenticate } from '../middleware/auth.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -64,12 +65,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ data: { user: safeUser, workspaces, token } });
   });
 
-  // Get current user + workspaces
-  app.get('/auth/me', {
-    preHandler: async (request, reply) => {
-      try { await request.jwtVerify(); } catch { reply.status(401).send({ error: 'Unauthorized' }); }
-    },
-  }, async (request) => {
+  // Get current user + workspaces (supports both Clerk JWT and legacy JWT)
+  app.get('/auth/me', { preHandler: authenticate }, async (request) => {
     const { userRepository, workspaceRepository } = getContainer();
     const user = await userRepository.findById(request.user.sub);
     const workspaces = await workspaceRepository.listForUser(request.user.sub);

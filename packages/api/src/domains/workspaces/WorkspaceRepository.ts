@@ -30,9 +30,9 @@ export class WorkspaceRepository {
     return workspace;
   }
 
-  async listForUser(user_id: string): Promise<Workspace[]> {
-    const result = await query<Workspace>(
-      `SELECT w.* FROM workspaces w
+  async listForUser(user_id: string): Promise<(Workspace & { role: WorkspaceRole })[]> {
+    const result = await query<Workspace & { role: WorkspaceRole }>(
+      `SELECT w.*, wm.role FROM workspaces w
        JOIN workspace_members wm ON wm.workspace_id = w.id
        WHERE wm.user_id = $1
        ORDER BY w.created_at ASC`,
