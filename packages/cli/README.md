@@ -124,9 +124,16 @@ claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp
 
 1. [Create a free account](https://tendon.alashed.kz/register)
 2. Run the command above
-3. Claude opens a browser — click Allow
+3. **Restart Claude Code** — MCP loads only at startup
+4. In chat, type `tendon whoami` → Claude opens a browser → click Allow
 
 Full web dashboard, team features, Telegram daily reports.
+
+### Troubleshooting
+
+- **"Failed to connect"** → Restart Claude Code after `claude mcp add`. MCP is loaded at startup only.
+- **Browser didn't open** → First request must go to MCP; if tools aren't loaded, restart Claude Code.
+- **Server check** → `curl https://mcp.tendon.alashed.kz/health` — if it returns JSON, the server is up.
 
 ---
 

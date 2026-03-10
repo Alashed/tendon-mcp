@@ -16,9 +16,11 @@ app.use(express.json());
 
 // ── RFC 9728: Protected Resource Metadata ────────────────────────────────────
 app.get('/.well-known/oauth-protected-resource', (_req, res) => {
+  const authServer = API_URL.replace('http://localhost:3001', 'https://api.tendon.alashed.kz');
   res.json({
     resource: MCP_BASE_URL,
-    authorization_servers: [API_URL.replace('http://localhost:3001', 'https://api.tendon.alashed.kz')],
+    resource_name: 'Tendon MCP',
+    authorization_servers: [authServer],
     bearer_methods_supported: ['header'],
     scopes_supported: ['mcp'],
   });
@@ -36,7 +38,7 @@ app.post('/mcp', async (req, res) => {
 
   if (!token) {
     res.status(401)
-      .set('WWW-Authenticate', `Bearer resource_metadata="${MCP_BASE_URL}/.well-known/oauth-protected-resource"`)
+      .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${MCP_BASE_URL}/.well-known/oauth-protected-resource"`)
       .json({ error: 'missing_token', error_description: 'Authorization header required' });
     return;
   }
@@ -46,7 +48,7 @@ app.post('/mcp', async (req, res) => {
     tokenInfo = await validateBearerToken(token);
   } catch {
     res.status(401)
-      .set('WWW-Authenticate', `Bearer resource_metadata="${MCP_BASE_URL}/.well-known/oauth-protected-resource", error="invalid_token"`)
+      .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${MCP_BASE_URL}/.well-known/oauth-protected-resource", error="invalid_token"`)
       .json({ error: 'invalid_token', error_description: 'Token invalid or expired' });
     return;
   }

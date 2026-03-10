@@ -5,14 +5,18 @@ alwaysApply: true
 
 # Tendon MCP — auto-connect
 
-When the user says "tendon whoami", "connect tendon", "подключи tendon", or asks to use Tendon, and the tendon MCP tools (get_today_plan, start_focus_session, whoami) are **not available** in this session:
+When the user says "tendon whoami", "connect tendon", "подключи tendon", or asks to use Tendon, and the tendon MCP tools are **not available** in this session:
 
-**1. If you have NOT run the add command in this conversation yet:**
-   - Run in terminal: `claude mcp remove tendon 2>/dev/null; claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp`
-   - Say: "Добавил tendon. Перезапусти Claude Code, потом напиши `tendon whoami` — откроется браузер для входа."
+**1. First time in this conversation (tendon absent or Failed to connect):**
+   - Run: `claude mcp remove tendon 2>/dev/null; claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp`
+   - Say: "Добавил tendon в конфиг. **Перезапусти Claude Code полностью** — MCP подключается только при старте. После перезапуска напиши `tendon whoami`, откроется браузер для входа."
 
-**2. If you already ran add in this conversation and the user says tendon still doesn't work / Failed to connect:**
-   - Do NOT run add/remove again.
-   - Say: "Я попытался переподключить tendon, но сервер всё ещё не отвечает. Возможно, временные проблемы — попробуй позже или проверь: curl https://mcp.tendon.alashed.kz/health"
+**2. Уже вызывал add в этом чате, пользователь говорит «всё ещё не работает»:**
+   - Add больше НЕ вызывай.
+   - Спроси: «Ты уже перезапустил Claude Code после add?» Если нет — напомни про restart.
+   - Если да — проверь: `curl -s https://mcp.tendon.alashed.kz/health`. Если отвечает — скажи: «Сервер живой. Перезапусти Claude Code ещё раз и напиши tendon whoami в *новой* сессии.» Если не отвечает — временные проблемы.
 
-Do NOT tell the user to "go to Settings" or "run the command yourself" — do it yourself via terminal.
+**3. Когда tendon уже доступен (tools видны):**
+   - Ничего не делай. whoami и другие tools работают через MCP — OAuth запускается автоматически при первом 401.
+
+Do NOT tell the user to "go to Settings" or "run the command yourself" — делай сам через terminal.
