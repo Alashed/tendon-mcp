@@ -67,7 +67,7 @@ function OAuthConsent() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse at 50% 30%, rgba(245,158,11,0.07) 0%, transparent 65%)',
+            'radial-gradient(ellipse at 50% 30%, rgba(59,130,246,0.07) 0%, transparent 65%)',
         }}
       />
       <div className="grid-bg absolute inset-0 opacity-50" />
@@ -77,14 +77,14 @@ function OAuthConsent() {
         <div
           className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
           style={{
-            background: 'rgba(245,158,11,0.1)',
-            border: '1px solid rgba(245,158,11,0.3)',
+            background: 'rgba(59,130,246,0.1)',
+            border: '1px solid rgba(59,130,246,0.3)',
           }}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path
               d="M13 10V3L4 14h7v7l9-11h-7z"
-              stroke="#F59E0B"
+              stroke="#3B82F6"
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -108,7 +108,7 @@ function OAuthConsent() {
         {/* Permissions */}
         <div
           className="space-y-2 mb-6 p-4 rounded-lg"
-          style={{ background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.1)' }}
+          style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.1)' }}
         >
           <p className="text-xs font-medium mb-2" style={{ color: 'var(--muted)' }}>
             Claude will be able to:

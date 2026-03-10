@@ -26,7 +26,7 @@ export default function LandingPage() {
         style={{
           width: '900px',
           height: '500px',
-          background: 'radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.13) 0%, transparent 68%)',
+          background: 'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.13) 0%, transparent 68%)',
         }}
       />
 
@@ -61,9 +61,9 @@ export default function LandingPage() {
           <span
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium mb-8"
             style={{
-              borderColor: 'rgba(245,158,11,0.3)',
+              borderColor: 'rgba(59,130,246,0.3)',
               color: 'var(--accent)',
-              background: 'rgba(245,158,11,0.07)',
+              background: 'rgba(59,130,246,0.07)',
             }}
           >
             <span
@@ -130,9 +130,9 @@ export default function LandingPage() {
             onClick={copy}
             className="mt-3 w-full py-2.5 rounded-lg text-xs font-medium border transition-all"
             style={{
-              borderColor: copied ? 'rgba(245,158,11,0.4)' : 'rgba(245,158,11,0.15)',
+              borderColor: copied ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.15)',
               color: copied ? 'var(--accent)' : 'var(--muted)',
-              background: copied ? 'rgba(245,158,11,0.06)' : 'transparent',
+              background: copied ? 'rgba(59,130,246,0.06)' : 'transparent',
             }}
           >
             {copied ? '✓ Copied to clipboard' : 'Copy command'}
@@ -183,7 +183,7 @@ export default function LandingPage() {
               />
               <div
                 className="font-display text-6xl font-bold mb-5 leading-none select-none"
-                style={{ color: 'rgba(245,158,11,0.1)' }}
+                style={{ color: 'rgba(59,130,246,0.1)' }}
               >
                 {step}
               </div>
@@ -191,7 +191,7 @@ export default function LandingPage() {
               <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--muted)' }}>{desc}</p>
               <span
                 className="text-xs px-2 py-1 rounded"
-                style={{ background: 'rgba(245,158,11,0.08)', color: 'var(--accent)' }}
+                style={{ background: 'rgba(59,130,246,0.08)', color: 'var(--accent)' }}
               >
                 {detail}
               </span>
@@ -237,7 +237,7 @@ export default function LandingPage() {
             <div key={title} className="card p-5 flex gap-4 group">
               <div
                 className="text-xl shrink-0 w-10 h-10 flex items-center justify-center rounded-lg transition-colors"
-                style={{ background: 'rgba(245,158,11,0.07)' }}
+                style={{ background: 'rgba(59,130,246,0.07)' }}
               >
                 {icon}
               </div>
@@ -257,7 +257,7 @@ export default function LandingPage() {
         <div className="card p-6 relative overflow-hidden">
           <div
             className="absolute inset-0 pointer-events-none"
-            style={{ background: 'radial-gradient(ellipse at 80% 0%, rgba(245,158,11,0.05) 0%, transparent 60%)' }}
+            style={{ background: 'radial-gradient(ellipse at 80% 0%, rgba(59,130,246,0.05) 0%, transparent 60%)' }}
           />
           <div className="text-xs mb-5 font-mono" style={{ color: 'var(--muted)' }}>
             Claude Code · Tendon MCP · Live conversation
@@ -295,7 +295,7 @@ export default function LandingPage() {
         <div className="card p-10 relative overflow-hidden">
           <div
             className="absolute inset-0 pointer-events-none"
-            style={{ background: 'radial-gradient(ellipse at 50% -20%, rgba(245,158,11,0.08) 0%, transparent 70%)' }}
+            style={{ background: 'radial-gradient(ellipse at 50% -20%, rgba(59,130,246,0.08) 0%, transparent 70%)' }}
           />
           <h2 className="relative font-display text-3xl font-bold mb-3">
             Ready to ship faster?

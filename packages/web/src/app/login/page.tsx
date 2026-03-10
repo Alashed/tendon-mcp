@@ -17,31 +17,50 @@ export default function LoginPage() {
           signUpUrl="/register"
           appearance={{
             variables: {
-              colorPrimary: '#F59E0B',
+              colorPrimary: '#3B82F6',
               colorBackground: '#111115',
               colorText: '#FAFAFA',
-              colorTextSecondary: '#71717A',
+              colorTextSecondary: '#A1A1AA',
               colorInputBackground: '#18181F',
               colorInputText: '#FAFAFA',
               colorNeutral: '#71717A',
+              colorDanger: '#F87171',
               borderRadius: '8px',
               fontFamily: 'var(--font-outfit), system-ui, sans-serif',
             },
             elements: {
+              rootBox: { width: '100%', maxWidth: '400px' },
               card: {
                 boxShadow: '0 0 0 1px rgba(255,255,255,0.07)',
                 background: '#111115',
               },
               formButtonPrimary: {
-                backgroundColor: '#F59E0B',
-                color: '#000',
+                backgroundColor: '#3B82F6',
+                color: '#fff',
                 fontWeight: '600',
               },
-              footerActionLink: { color: '#F59E0B' },
+              footerActionLink: { color: '#60A5FA' },
               headerTitle: {
                 fontFamily: 'var(--font-syne), system-ui, sans-serif',
                 fontWeight: '700',
+                color: '#FAFAFA',
               },
+              headerSubtitle: { color: '#A1A1AA' },
+              formFieldLabel: { color: '#A1A1AA' },
+              formFieldInput: {
+                background: '#18181F',
+                borderColor: 'rgba(255,255,255,0.1)',
+                color: '#FAFAFA',
+              },
+              dividerLine: { background: 'rgba(255,255,255,0.07)' },
+              dividerText: { color: '#71717A' },
+              socialButtonsBlockButton: {
+                background: '#18181F',
+                borderColor: 'rgba(255,255,255,0.1)',
+                color: '#FAFAFA',
+              },
+              identityPreviewText: { color: '#FAFAFA' },
+              identityPreviewEditButtonIcon: { color: '#A1A1AA' },
             },
           }}
         />
@@ -56,7 +75,7 @@ export default function LoginPage() {
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              'radial-gradient(ellipse at 30% 50%, rgba(245,158,11,0.06) 0%, transparent 65%)',
+              'radial-gradient(ellipse at 30% 50%, rgba(59,130,246,0.06) 0%, transparent 65%)',
           }}
         />
         <div className="relative max-w-sm animate-fade-in delay-300">

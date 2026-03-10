@@ -7,14 +7,14 @@ import { getTasks, createTask, updateTask, type Task } from '@/lib/api';
 
 const STATUS_DOT: Record<Task['status'], string> = {
   planned: '#52525B',
-  in_progress: '#F59E0B',
+  in_progress: '#3B82F6',
   done: '#22C55E',
   archived: '#3F3F46',
 };
 
 const PRIORITY_BADGE: Record<NonNullable<Task['priority']>, { bg: string; color: string }> = {
   high: { bg: 'rgba(239,68,68,0.12)', color: '#FCA5A5' },
-  medium: { bg: 'rgba(245,158,11,0.12)', color: '#FCD34D' },
+  medium: { bg: 'rgba(59,130,246,0.12)', color: '#93C5FD' },
   low: { bg: 'rgba(82,82,91,0.4)', color: '#71717A' },
 };
 
@@ -140,7 +140,7 @@ export default function DashboardPage() {
           <Link
             href="/onboarding"
             className="text-xs px-3 py-1.5 rounded border transition-colors hidden sm:block"
-            style={{ borderColor: 'rgba(245,158,11,0.2)', color: 'var(--accent)' }}
+            style={{ borderColor: 'rgba(59,130,246,0.2)', color: 'var(--accent)' }}
           >
             Connect Claude
           </Link>
@@ -187,7 +187,7 @@ export default function DashboardPage() {
         {/* Claude tip */}
         <div
           className="flex items-start gap-3 px-4 py-3.5 rounded-lg text-sm mb-6"
-          style={{ background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.13)' }}
+          style={{ background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.13)' }}
         >
           <span style={{ color: 'var(--accent)' }} className="mt-0.5">✦</span>
           <div style={{ color: 'var(--muted)' }}>

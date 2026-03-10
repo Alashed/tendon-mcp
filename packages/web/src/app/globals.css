@@ -8,9 +8,9 @@
   --surface-2: #1a1a20;
   --border: rgba(255, 255, 255, 0.07);
   --border-hover: rgba(255, 255, 255, 0.14);
-  --accent: #f59e0b;
+  --accent: #3B82F6;
   --accent-light: #fcd34d;
-  --accent-dim: rgba(245, 158, 11, 0.12);
+  --accent-dim: rgba(59, 130, 246, 0.12);
   --text: #fafafa;
   --muted: #71717a;
   --subtle: #3f3f46;
@@ -120,7 +120,7 @@ body {
 }
 .amber-btn:hover {
   background: var(--accent-light);
-  box-shadow: 0 0 24px rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.35);
 }
 .amber-btn:active {
   transform: scale(0.98);
@@ -142,8 +142,8 @@ body {
 
 .terminal-cmd {
   font-family: var(--font-mono), ui-monospace, monospace;
-  background: rgba(245, 158, 11, 0.04);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: rgba(59, 130, 246, 0.04);
+  border: 1px solid rgba(59, 130, 246, 0.2);
   border-radius: 10px;
   padding: 16px 20px;
   color: var(--accent-light);
@@ -163,8 +163,8 @@ body {
   appearance: none;
 }
 .input:focus {
-  border-color: rgba(245, 158, 11, 0.45);
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.08);
+  border-color: rgba(59, 130, 246, 0.45);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
 }
 .input::placeholder {
   color: var(--subtle);
@@ -172,7 +172,7 @@ body {
 
 /* Amber glow text effect */
 .text-amber-glow {
-  text-shadow: 0 0 40px rgba(245, 158, 11, 0.5);
+  text-shadow: 0 0 40px rgba(59, 130, 246, 0.5);
 }
 
 /* Shimmer gradient text */

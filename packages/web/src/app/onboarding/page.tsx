@@ -28,7 +28,7 @@ export default function OnboardingPage() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse at 50% 20%, rgba(245,158,11,0.08) 0%, transparent 65%)',
+            'radial-gradient(ellipse at 50% 20%, rgba(59,130,246,0.08) 0%, transparent 65%)',
         }}
       />
       <div className="grid-bg absolute inset-0 opacity-50" />
@@ -39,14 +39,14 @@ export default function OnboardingPage() {
           <div
             className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-6"
             style={{
-              background: 'rgba(245,158,11,0.1)',
-              border: '1px solid rgba(245,158,11,0.3)',
+              background: 'rgba(59,130,246,0.1)',
+              border: '1px solid rgba(59,130,246,0.3)',
             }}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path
                 d="M5 12l4.5 4.5L19 7"
-                stroke="#F59E0B"
+                stroke="#3B82F6"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -67,7 +67,7 @@ export default function OnboardingPage() {
             <div className="flex items-center gap-2 mb-3">
               <span
                 className="text-xs px-2 py-0.5 rounded font-mono"
-                style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--accent)' }}
+                style={{ background: 'rgba(59,130,246,0.12)', color: 'var(--accent)' }}
               >
                 terminal
               </span>
@@ -91,9 +91,9 @@ export default function OnboardingPage() {
           onClick={copy}
           className="w-full py-3 rounded-lg text-sm font-medium border transition-all mb-8"
           style={{
-            borderColor: copied ? 'rgba(245,158,11,0.4)' : 'rgba(245,158,11,0.15)',
+            borderColor: copied ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.15)',
             color: copied ? 'var(--accent)' : 'var(--muted)',
-            background: copied ? 'rgba(245,158,11,0.06)' : 'transparent',
+            background: copied ? 'rgba(59,130,246,0.06)' : 'transparent',
           }}
         >
           {copied ? '✓ Copied — paste it in your terminal' : 'Copy command'}
@@ -117,7 +117,7 @@ export default function OnboardingPage() {
             <div key={n} className="card flex items-center gap-4 px-4 py-3.5">
               <div
                 className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-                style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--accent)' }}
+                style={{ background: 'rgba(59,130,246,0.12)', color: 'var(--accent)' }}
               >
                 {n}
               </div>
