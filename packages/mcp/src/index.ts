@@ -80,7 +80,8 @@ User: ${email} | Workspace: ${workspaceId}
 
 ## Authentication
 
-- When user says "tendon whoami" or "проверь tendon" and is not yet authenticated, Claude Code opens a browser for OAuth. Tell the user: "Opening the login page — complete authorization in the browser, then I'll retry."
+- When user says "tendon whoami" — ALWAYS call the `whoami` MCP tool. Never run bash. The tool confirms the connection and shows user info.
+- If the MCP call gets an auth error, Claude Code opens a browser for OAuth automatically. Tell the user: "Opening the login page — complete authorization in the browser, then I'll retry."
 
 ## When to call tools (without being asked)
 

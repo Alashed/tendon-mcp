@@ -285,16 +285,13 @@ async function cmdWhoami(): Promise<void> {
   }
 
   console.log('');
-  console.log(pc.bold('  Next: connect Claude'));
+  console.log(pc.bold('  Connect to Claude Code'));
   console.log('');
-  console.log(pc.dim('  1. Open Claude Code'));
-  console.log(pc.dim('  2. Settings → Tools → ensure server "tendon" is enabled'));
-  console.log(pc.dim('  3. In chat, type: ') + pc.cyan('tendon whoami'));
-  console.log(pc.dim('     → A browser opens for login; complete auth'));
-  console.log('');
-  console.log(pc.dim('  If tendon is not in Claude yet (or "Failed to connect"):'));
-  console.log(pc.cyan(`    claude mcp remove tendon`));
+  console.log(pc.dim('  If tendon is not added yet:'));
   console.log(pc.cyan(`    claude mcp add --transport http tendon ${mcpUrl}`));
+  console.log('');
+  console.log(pc.dim('  Then restart Claude Code, and in chat type: ') + pc.cyan('tendon whoami'));
+  console.log(pc.dim('  → Browser opens for login'));
   console.log('');
 }
 

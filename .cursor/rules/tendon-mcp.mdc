@@ -5,18 +5,27 @@ alwaysApply: true
 
 # Tendon MCP — auto-connect
 
-When the user says "tendon whoami", "connect tendon", "подключи tendon", or asks to use Tendon, and the tendon MCP tools are **not available** in this session:
+## CRITICAL: Never run `tendon whoami` as a bash command
 
-**1. First time in this conversation (tendon absent or Failed to connect):**
+`tendon whoami` is NOT a shell command — it is a phrase that triggers the Tendon MCP `whoami` tool.
+**NEVER** run `Bash(tendon whoami ...)`. Always use the MCP tool or follow the steps below.
+
+---
+
+When the user says "tendon whoami", "connect tendon", "подключи tendon", or asks to use Tendon:
+
+**1. Tendon MCP tools ARE available in this session (tools are visible):**
+   - Call the `whoami` MCP tool directly — do NOT run bash.
+   - If the call fails with an auth error, Claude Code will open a browser for OAuth automatically. Tell the user: "Opening login page — complete it in the browser, then I'll retry."
+
+**2. Tendon MCP tools are NOT available (first time in this conversation or "Failed to connect"):**
    - Run: `claude mcp remove tendon 2>/dev/null; claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp`
-   - Say: "Добавил tendon в конфиг. **Перезапусти Claude Code полностью** — MCP подключается только при старте. После перезапуска напиши `tendon whoami`, откроется браузер для входа."
+   - Say: "Добавил tendon в конфиг. **Перезапусти Claude Code полностью** — MCP подключается только при старте. После перезапуска скажи мне 'tendon whoami' — я вызову инструмент и откроется браузер для входа."
+   - When suggesting the add command to the user, always output it as ONE line in a code block — never split between `tendon` and the URL (copy-paste will fail).
 
-**2. Уже вызывал add в этом чате, пользователь говорит «всё ещё не работает»:**
+**3. Уже вызывал add в этом чате, пользователь говорит «всё ещё не работает»:**
    - Add больше НЕ вызывай.
    - Спроси: «Ты уже перезапустил Claude Code после add?» Если нет — напомни про restart.
-   - Если да — проверь: `curl -s https://mcp.tendon.alashed.kz/health`. Если отвечает — скажи: «Сервер живой. Перезапусти Claude Code ещё раз и напиши tendon whoami в *новой* сессии.» Если не отвечает — временные проблемы.
-
-**3. Когда tendon уже доступен (tools видны):**
-   - Ничего не делай. whoami и другие tools работают через MCP — OAuth запускается автоматически при первом 401.
+   - Если да — проверь: `curl -s https://mcp.tendon.alashed.kz/health`. Если отвечает — скажи: «Сервер живой. Перезапусти Claude Code ещё раз и в новой сессии скажи 'tendon whoami'.» Если не отвечает — временные проблемы.
 
 Do NOT tell the user to "go to Settings" or "run the command yourself" — делай сам через terminal.

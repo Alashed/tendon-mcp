@@ -238,11 +238,11 @@ export default function OnboardingPage() {
               </div>
             </div>
             <div
-              className="flex items-start gap-2 px-3 py-2.5 rounded-lg mb-3"
+              className="flex items-start gap-2 px-3 py-2.5 rounded-lg mb-3 overflow-x-auto"
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
             >
               <span className="text-sm shrink-0 mt-0.5" style={{ color: 'var(--subtle)' }}>$</span>
-              <code className="text-xs flex-1 break-all leading-relaxed select-all" style={{ color: 'var(--accent-light)' }}>
+              <code className="text-xs flex-1 whitespace-nowrap select-all" style={{ color: 'var(--accent-light)' }}>
                 {COMMAND}
               </code>
             </div>
@@ -258,7 +258,7 @@ export default function OnboardingPage() {
               {copied === 'cmd' ? '✓ Copied' : 'Copy command'}
             </button>
             <p className="text-xs mt-2" style={{ color: 'var(--subtle)' }}>
-              If tendon shows &quot;Failed to connect&quot;: <code className="text-[11px]">claude mcp remove tendon</code>, add again, then restart Claude Code — MCP loads only at startup.
+              If tendon shows &quot;Failed to connect&quot;: remove, add again, restart Claude Code. Copy the command as one line — no break between tendon and the URL.
             </p>
           </div>
 
@@ -283,12 +283,12 @@ export default function OnboardingPage() {
               </div>
               <div>
                 <p className="text-sm font-medium">
-                  {connected === true ? 'Claude is connected!' : 'Open Claude Code — type this in chat'}
+                  {connected === true ? 'Claude is connected!' : 'Restart Claude Code, then say this in chat'}
                 </p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
               {connected === true
                 ? 'Tendon is now tracking your work.'
-                : 'Type this — Claude opens a browser for login. First time only.'}
+                : 'Type this in the Claude chat (not terminal) — Claude will open a browser for login.'}
             </p>
               </div>
             </div>
@@ -308,6 +308,9 @@ export default function OnboardingPage() {
                     {copied === 'prompt' ? '✓' : 'copy'}
                   </button>
                 </div>
+                <p className="text-xs mb-3" style={{ color: 'var(--subtle)' }}>
+                  ↑ paste this into Claude Code chat — not your terminal
+                </p>
                 <button
                   onClick={checkConnection}
                   disabled={checking}
