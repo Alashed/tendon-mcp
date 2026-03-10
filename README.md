@@ -9,7 +9,9 @@ Connect your workspace in one command — no config files, no manual token copyi
 
 ---
 
-## Use the hosted version
+## Two ways to get started
+
+### Option 1 — Hosted (easiest, full dashboard)
 
 ```bash
 claude mcp add --transport http tendon https://mcp.tendon.alashed.kz
@@ -19,6 +21,18 @@ claude mcp add --transport http tendon https://mcp.tendon.alashed.kz
 2. Run the command above in your terminal
 3. Claude opens a browser — click **Allow**
 4. Ask anything
+
+Full web dashboard, team features, Telegram reports, analytics.
+
+---
+
+### Option 2 — Self-hosted CLI (one command, no account needed)
+
+```bash
+npx tendon-cli
+```
+
+Interactive setup wizard — starts PostgreSQL + API + MCP via Docker, creates your account, prints the Claude command. No external accounts required.
 
 ---
 
