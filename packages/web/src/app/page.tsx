@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-const CLOUD_CMD = 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz';
+const CLOUD_CMD = 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp';
 const CLI_CMD = 'npx tendon-cli';
 
 export default function LandingPage() {

@@ -14,7 +14,7 @@ Connect your workspace in one command — no config files, no manual token copyi
 ### Option 1 — Hosted (easiest, full dashboard)
 
 ```bash
-claude mcp add --transport http tendon https://mcp.tendon.alashed.kz
+claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp
 ```
 
 1. [Create a free account →](https://tendon.alashed.kz/register)
@@ -152,7 +152,7 @@ That's it. PostgreSQL, the API, and the MCP server all start automatically.
 Then add to Claude Code:
 
 ```bash
-claude mcp add --transport http tendon http://localhost:3002
+claude mcp add --transport http tendon http://localhost:3002/mcp
 ```
 
 Claude opens `http://localhost:3001/oauth/authorize` — create an account with email/password and click **Allow**. No Clerk, no external services.
@@ -196,7 +196,7 @@ npm run dev:mcp   # http://localhost:3002
 ```
 
 ```bash
-claude mcp add --transport http tendon http://localhost:3002
+claude mcp add --transport http tendon http://localhost:3002/mcp
 ```
 
 ---

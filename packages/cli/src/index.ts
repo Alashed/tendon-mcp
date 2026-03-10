@@ -12,7 +12,7 @@ const REPO_ROOT = join(__dirname, '..', '..', '..');
 const API_PORT = 3001;
 const MCP_PORT = 3002;
 const API_URL = `http://localhost:${API_PORT}`;
-const MCP_URL = `http://localhost:${MCP_PORT}`;
+const MCP_URL = `http://localhost:${MCP_PORT}/mcp`;
 
 // ── ASCII banner ──────────────────────────────────────────────────────────────
 
@@ -244,7 +244,7 @@ function printSuccess(email: string): void {
 // ── whoami subcommand (no TTY required) ───────────────────────────────────────
 
 const HOSTED_API = 'https://api.tendon.alashed.kz';
-const HOSTED_MCP = 'https://mcp.tendon.alashed.kz';
+const HOSTED_MCP = 'https://mcp.tendon.alashed.kz/mcp';
 
 async function cmdWhoami(): Promise<void> {
   console.log('');
@@ -291,7 +291,8 @@ async function cmdWhoami(): Promise<void> {
   console.log(pc.dim('  3. In chat, type: ') + pc.cyan('tendon whoami'));
   console.log(pc.dim('     → A browser opens for login; complete auth'));
   console.log('');
-  console.log(pc.dim('  If tendon is not in Claude yet:'));
+  console.log(pc.dim('  If tendon is not in Claude yet (or "Failed to connect"):'));
+  console.log(pc.cyan(`    claude mcp remove tendon`));
   console.log(pc.cyan(`    claude mcp add --transport http tendon ${mcpUrl}`));
   console.log('');
 }

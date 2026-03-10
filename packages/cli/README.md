@@ -58,7 +58,7 @@ Requires [Docker Desktop](https://www.docker.com/products/docker-desktop) to be 
 
 **1. Add MCP** (if tendon isn't in Claude yet):
 ```bash
-claude mcp add --transport http tendon http://localhost:3002
+claude mcp add --transport http tendon http://localhost:3002/mcp
 ```
 
 **2. In Claude Code** — type `tendon whoami`. Browser opens for auth → complete login.
@@ -119,7 +119,7 @@ Claude Code also has slash prompts: `/morning`, `/wrap_up`, `/standup`, `/review
 If you don't want to self-host:
 
 ```bash
-claude mcp add --transport http tendon https://mcp.tendon.alashed.kz
+claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp
 ```
 
 1. [Create a free account](https://tendon.alashed.kz/register)

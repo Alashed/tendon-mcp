@@ -124,7 +124,7 @@ export default function SettingsPage() {
   const teamWorkspaces = workspaces.filter((w) => w.type === 'team');
   const canInvite = teamWorkspaces.some((w) => w.role === 'owner' || w.role === 'admin');
 
-  const COMMAND = 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz';
+  const COMMAND = 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp';
   const [cmdCopied, setCmdCopied] = useState(false);
   const copyCmd = async () => {
     await navigator.clipboard.writeText(COMMAND);

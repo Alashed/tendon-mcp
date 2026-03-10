@@ -111,7 +111,7 @@ export default function RegisterPage() {
           {[
             {
               label: 'Step 1 — Run this once',
-              content: 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz',
+              content: 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp',
               mono: true,
               accent: true,
             },
