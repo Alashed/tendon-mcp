@@ -1,5 +1,5 @@
 const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tracker.alashed.kz';
+  process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
 
 async function apiFetch<T>(path: string, token: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {

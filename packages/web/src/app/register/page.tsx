@@ -67,7 +67,7 @@ export default function RegisterPage() {
             {
               label: 'Step 1 — Run this once',
               content:
-                'claude mcp add --transport http alashed-tracker https://mcp.tracker.alashed.kz',
+                'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz',
               mono: true,
               accent: true,
             },

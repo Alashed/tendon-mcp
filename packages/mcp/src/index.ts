@@ -8,7 +8,7 @@ import { registerTools } from './tools.js';
 
 const PORT = parseInt(process.env['PORT'] ?? '3002', 10);
 const API_URL = process.env['ALASHED_API_URL'] ?? 'http://localhost:3001';
-const MCP_BASE_URL = process.env['MCP_BASE_URL'] ?? 'https://mcp.tracker.alashed.kz';
+const MCP_BASE_URL = process.env['MCP_BASE_URL'] ?? 'https://mcp.tendon.alashed.kz';
 
 const app = express();
 app.use(express.json());
@@ -17,7 +17,7 @@ app.use(express.json());
 app.get('/.well-known/oauth-protected-resource', (_req, res) => {
   res.json({
     resource: MCP_BASE_URL,
-    authorization_servers: [API_URL.replace('http://localhost:3001', 'https://api.tracker.alashed.kz')],
+    authorization_servers: [API_URL.replace('http://localhost:3001', 'https://api.tendon.alashed.kz')],
     bearer_methods_supported: ['header'],
     scopes_supported: ['mcp'],
   });

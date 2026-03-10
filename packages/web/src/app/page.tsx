@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
-const COMMAND = 'claude mcp add --transport http alashed-tracker https://mcp.tracker.alashed.kz';
+const COMMAND = 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz';
 
 export default function LandingPage() {
   const [copied, setCopied] = useState(false);
@@ -156,7 +156,7 @@ export default function LandingPage() {
             {
               step: '01',
               title: 'Create your account',
-              desc: 'Sign up at tracker.alashed.kz. Your personal workspace is ready instantly.',
+              desc: 'Sign up at tendon.alashed.kz. Your personal workspace is ready instantly.',
               detail: 'Takes 30 seconds',
             },
             {

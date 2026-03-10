@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@clerk/nextjs';
 
-const COMMAND = 'claude mcp add --transport http alashed-tracker https://mcp.tracker.alashed.kz';
+const COMMAND = 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz';
 
 export default function OnboardingPage() {
   const { user } = useUser();
