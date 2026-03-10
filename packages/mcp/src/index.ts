@@ -22,6 +22,29 @@ app.get('/health', (_req, res) => {
 
 // ── MCP endpoint (resource server only — no /authorize, /token) ───────────────
 app.post('/mcp', async (req, res) => {
+  const body = req.body as { method?: string } | undefined;
+
+  // Allow initialize without auth so Claude Code can discover tools.
+  // OAuth is triggered automatically when the first real tool call returns 401.
+  const isHandshake = body?.method === 'initialize' || body?.method === 'notifications/initialized';
+
+  if (isHandshake) {
+    const server = new McpServer({ name: 'tendon', version: '1.0.0' });
+    registerTools(server, new ApiClient(API_URL, ''), '', '');
+    registerPrompts(server, '');
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    res.on('close', () => { transport.close(); server.close(); });
+    try {
+      await server.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+    } catch (err) {
+      console.error('MCP init error:', err);
+      if (!res.headersSent) res.status(500).json({ error: 'Internal server error' });
+    }
+    return;
+  }
+
+  // All tool calls require a valid bearer token
   const authHeader = req.headers['authorization'];
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
