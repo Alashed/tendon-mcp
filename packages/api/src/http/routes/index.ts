@@ -18,9 +18,9 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(reportRoutes);
   await app.register(inviteRoutes);
 
-  app.get('/health', async () => ({ status: 'ok', ts: new Date().toISOString() }));
-  app.get('/diagnostic', async () => ({
+  app.get('/health', async () => ({
     status: 'ok',
+    ts: new Date().toISOString(),
     clerkConfigured: !!process.env['CLERK_SECRET_KEY'],
     corsOrigins: (process.env['CORS_ORIGINS'] ?? '').split(',').filter(Boolean),
   }));
