@@ -1,69 +1,95 @@
 import { SignUp } from '@clerk/nextjs';
 import Link from 'next/link';
 
+const clerkDark = {
+  variables: {
+    colorPrimary: '#3B82F6',
+    colorBackground: '#111115',
+    colorText: '#FAFAFA',
+    colorTextSecondary: '#A1A1AA',
+    colorInputBackground: '#18181F',
+    colorInputText: '#FAFAFA',
+    colorNeutral: '#52525B',
+    colorDanger: '#F87171',
+    colorSuccess: '#4ADE80',
+    colorWarning: '#FBBF24',
+    borderRadius: '8px',
+    fontFamily: 'var(--font-outfit), system-ui, sans-serif',
+    fontSize: '14px',
+  },
+  elements: {
+    rootBox: { width: '100%' },
+    card: {
+      background: '#111115',
+      boxShadow: '0 0 0 1px rgba(255,255,255,0.07)',
+    },
+    cardBox: { background: '#111115' },
+    headerTitle: {
+      fontFamily: 'var(--font-syne), system-ui, sans-serif',
+      fontWeight: '700',
+      color: '#FAFAFA',
+    },
+    headerSubtitle: { color: '#A1A1AA' },
+    formFieldLabel: { color: '#A1A1AA', fontSize: '12px' },
+    formFieldInput: {
+      background: '#18181F',
+      borderColor: 'rgba(255,255,255,0.1)',
+      color: '#FAFAFA',
+    },
+    formFieldInputShowPasswordButton: { color: '#71717A' },
+    formFieldHintText: { color: '#71717A' },
+    formFieldErrorText: { color: '#F87171' },
+    formFieldSuccessText: { color: '#4ADE80' },
+    formFieldWarningText: { color: '#FBBF24' },
+    formButtonPrimary: {
+      backgroundColor: '#3B82F6',
+      color: '#fff',
+      fontWeight: '600',
+    },
+    formButtonReset: { color: '#60A5FA' },
+    dividerLine: { background: 'rgba(255,255,255,0.07)' },
+    dividerText: { color: '#52525B' },
+    socialButtonsBlockButton: {
+      background: '#18181F',
+      borderColor: 'rgba(255,255,255,0.1)',
+      color: '#FAFAFA',
+    },
+    socialButtonsBlockButtonText: { color: '#FAFAFA' },
+    socialButtonsBlockButtonArrow: { color: '#71717A' },
+    footerActionLink: { color: '#60A5FA' },
+    footerActionText: { color: '#71717A' },
+    footer: { background: '#111115', borderTop: '1px solid rgba(255,255,255,0.06)' },
+    identityPreviewText: { color: '#FAFAFA' },
+    identityPreviewEditButtonIcon: { color: '#A1A1AA' },
+    alertText: { color: '#FAFAFA' },
+    alert: { background: 'rgba(248,113,113,0.08)', borderColor: 'rgba(248,113,113,0.2)' },
+    otpCodeFieldInput: {
+      background: '#18181F',
+      borderColor: 'rgba(255,255,255,0.1)',
+      color: '#FAFAFA',
+    },
+    formResendCodeLink: { color: '#60A5FA' },
+  },
+} as const;
+
 export default function RegisterPage() {
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--bg)' }}>
 
       {/* ── SignUp side ─────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-        <Link href="/" className="font-display font-bold text-lg mb-10 self-start max-w-sm w-full">
-          <span style={{ color: 'var(--accent)' }}>tendon</span>
-          <span style={{ color: 'var(--muted)' }}>.</span>
-        </Link>
+        <div className="w-full max-w-[400px]">
+          <Link href="/" className="font-display font-bold text-lg mb-8 block text-center">
+            <span style={{ color: 'var(--accent)' }}>tendon</span>
+            <span style={{ color: 'var(--muted)' }}>.</span>
+          </Link>
 
-        <SignUp
-          fallbackRedirectUrl="/onboarding"
-          signInUrl="/login"
-          appearance={{
-            variables: {
-              colorPrimary: '#3B82F6',
-              colorBackground: '#111115',
-              colorText: '#FAFAFA',
-              colorTextSecondary: '#A1A1AA',
-              colorInputBackground: '#18181F',
-              colorInputText: '#FAFAFA',
-              colorNeutral: '#71717A',
-              colorDanger: '#F87171',
-              borderRadius: '8px',
-              fontFamily: 'var(--font-outfit), system-ui, sans-serif',
-            },
-            elements: {
-              rootBox: { width: '100%', maxWidth: '400px' },
-              card: {
-                boxShadow: '0 0 0 1px rgba(255,255,255,0.07)',
-                background: '#111115',
-              },
-              formButtonPrimary: {
-                backgroundColor: '#3B82F6',
-                color: '#fff',
-                fontWeight: '600',
-              },
-              footerActionLink: { color: '#60A5FA' },
-              headerTitle: {
-                fontFamily: 'var(--font-syne), system-ui, sans-serif',
-                fontWeight: '700',
-                color: '#FAFAFA',
-              },
-              headerSubtitle: { color: '#A1A1AA' },
-              formFieldLabel: { color: '#A1A1AA' },
-              formFieldInput: {
-                background: '#18181F',
-                borderColor: 'rgba(255,255,255,0.1)',
-                color: '#FAFAFA',
-              },
-              dividerLine: { background: 'rgba(255,255,255,0.07)' },
-              dividerText: { color: '#71717A' },
-              socialButtonsBlockButton: {
-                background: '#18181F',
-                borderColor: 'rgba(255,255,255,0.1)',
-                color: '#FAFAFA',
-              },
-              identityPreviewText: { color: '#FAFAFA' },
-              identityPreviewEditButtonIcon: { color: '#A1A1AA' },
-            },
-          }}
-        />
+          <SignUp
+            fallbackRedirectUrl="/onboarding"
+            signInUrl="/login"
+            appearance={clerkDark}
+          />
+        </div>
       </div>
 
       {/* ── Preview side ─────────────────────────────── */}
@@ -85,8 +111,7 @@ export default function RegisterPage() {
           {[
             {
               label: 'Step 1 — Run this once',
-              content:
-                'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz',
+              content: 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz',
               mono: true,
               accent: true,
             },
