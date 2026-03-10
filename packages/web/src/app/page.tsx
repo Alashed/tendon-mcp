@@ -285,6 +285,95 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Pricing ─────────────────────────────────────────── */}
+      <section className="px-6 max-w-3xl mx-auto mb-28">
+        <h2 className="font-display text-2xl font-bold mb-2">Pricing</h2>
+        <p className="text-sm mb-10" style={{ color: 'var(--muted)' }}>
+          Self-hosted is always free. Hosted cloud starts free.
+        </p>
+
+        <div className="grid sm:grid-cols-3 gap-4">
+          {/* Free */}
+          <div className="card p-6 flex flex-col">
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--subtle)' }}>Free</p>
+            <div className="font-display text-3xl font-bold mb-1">$0</div>
+            <p className="text-xs mb-6" style={{ color: 'var(--muted)' }}>forever</p>
+            <ul className="space-y-2 text-sm flex-1 mb-6" style={{ color: 'var(--muted)' }}>
+              {['1 workspace', '50 tasks', 'All MCP tools', '7-day history', 'Self-hosted: unlimited'].map(f => (
+                <li key={f} className="flex items-center gap-2">
+                  <span style={{ color: 'var(--subtle)' }}>·</span>{f}
+                </li>
+              ))}
+            </ul>
+            <Link href="/register"
+              className="w-full py-2.5 rounded-lg text-sm border text-center transition-all block"
+              style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>
+              Get started
+            </Link>
+          </div>
+
+          {/* Pro */}
+          <div className="card p-6 flex flex-col relative overflow-hidden"
+            style={{ borderColor: 'rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.03)' }}>
+            <div
+              className="absolute top-0 left-0 right-0 h-0.5"
+              style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.6), transparent)' }}
+            />
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>Pro</p>
+            <div className="font-display text-3xl font-bold mb-1">$9</div>
+            <p className="text-xs mb-6" style={{ color: 'var(--muted)' }}>per month</p>
+            <ul className="space-y-2 text-sm flex-1 mb-6" style={{ color: 'var(--muted)' }}>
+              {[
+                'Unlimited tasks',
+                'Unlimited history',
+                'Telegram daily reports',
+                '/morning, /wrap_up, /review',
+                'week_summary tool',
+                'Priority support',
+              ].map(f => (
+                <li key={f} className="flex items-center gap-2">
+                  <span style={{ color: 'var(--accent)' }}>✓</span>{f}
+                </li>
+              ))}
+            </ul>
+            <a href="mailto:hello@tendon.alashed.kz?subject=Pro plan"
+              className="amber-btn w-full py-2.5 rounded-lg text-sm text-center block">
+              Get Pro
+            </a>
+          </div>
+
+          {/* Team */}
+          <div className="card p-6 flex flex-col">
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--subtle)' }}>Team</p>
+            <div className="font-display text-3xl font-bold mb-1">$19</div>
+            <p className="text-xs mb-6" style={{ color: 'var(--muted)' }}>per month</p>
+            <ul className="space-y-2 text-sm flex-1 mb-6" style={{ color: 'var(--muted)' }}>
+              {[
+                'Everything in Pro',
+                'Up to 10 members',
+                'Team dashboard',
+                'Per-member analytics',
+                'Invite flow',
+                'Shared workspace',
+              ].map(f => (
+                <li key={f} className="flex items-center gap-2">
+                  <span style={{ color: 'var(--subtle)' }}>·</span>{f}
+                </li>
+              ))}
+            </ul>
+            <a href="mailto:hello@tendon.alashed.kz?subject=Team plan"
+              className="w-full py-2.5 rounded-lg text-sm border text-center transition-all block"
+              style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}>
+              Contact us
+            </a>
+          </div>
+        </div>
+
+        <p className="text-xs text-center mt-6" style={{ color: 'var(--subtle)' }}>
+          Self-hosted via <code style={{ color: 'var(--muted)' }}>npx tendon-cli</code> is always free and unlimited. MIT license.
+        </p>
+      </section>
+
       {/* ── Final CTA ───────────────────────────────────────── */}
       <section className="px-6 max-w-xl mx-auto mb-24 text-center">
         <h2 className="font-display text-3xl font-bold mb-3">

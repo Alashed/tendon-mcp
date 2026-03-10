@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
 import { getContainer } from '../../di/container.js';
 import { ForbiddenError, NotFoundError } from '../../shared/errors/AppError.js';
+import { assertTaskLimit } from '../../shared/limits.js';
 
 const CreateTaskSchema = z.object({
   workspace_id: z.string().uuid(),
@@ -57,6 +58,8 @@ export async function taskRoutes(app: FastifyInstance): Promise<void> {
 
     const member = await workspaceRepository.getMember(body.workspace_id, request.user.sub);
     if (!member) throw new ForbiddenError();
+
+    await assertTaskLimit(body.workspace_id);
 
     const task = await taskRepository.create({
       ...body,

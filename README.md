@@ -362,6 +362,26 @@ Bot commands:
 
 ---
 
+## Pricing
+
+Self-hosted is always free and unlimited (MIT license).
+
+| | Free | Pro | Team |
+|---|---|---|---|
+| **Price** | $0 | $9/mo | $19/mo |
+| Workspaces | 1 | 1 | Unlimited |
+| Tasks | 50 | Unlimited | Unlimited |
+| History | 7 days | Unlimited | Unlimited |
+| MCP tools | All | All | All |
+| Telegram reports | — | ✓ | ✓ |
+| Team members | — | — | Up to 10 |
+| Team dashboard | — | — | ✓ |
+| Self-hosted | ✓ unlimited | — | — |
+
+**Pro / Team:** email [hello@tendon.alashed.kz](mailto:hello@tendon.alashed.kz)
+
+---
+
 ## Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

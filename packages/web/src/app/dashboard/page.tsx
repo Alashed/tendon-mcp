@@ -233,6 +233,7 @@ export default function DashboardPage() {
   const [tick, setTick] = useState(0);
   const [showInvite, setShowInvite] = useState(false);
   const [claudeConnected, setClaudeConnected] = useState<boolean | null>(null);
+  const [plan, setPlan] = useState<string>('free');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Live timer tick
@@ -268,6 +269,7 @@ export default function DashboardPage() {
         if (claudeRes.ok) {
           const { data } = await claudeRes.json();
           setClaudeConnected(data.connected);
+          setPlan(data.plan ?? 'free');
         }
       } catch {
         setLoading(false); // network error (SSL, offline) → stop skeleton
@@ -488,6 +490,28 @@ export default function DashboardPage() {
                 Connect Claude →
               </a>
             )}
+
+            {/* Plan badge */}
+            {plan === 'free' && (
+              <a
+                href="/#pricing"
+                className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full transition-all"
+                style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--subtle)', border: '1px solid rgba(255,255,255,0.07)' }}
+                title="Upgrade to Pro for unlimited tasks"
+              >
+                Free
+              </a>
+            )}
+            {plan === 'personal' && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent)' }}>
+                Pro
+              </span>
+            )}
+            {plan === 'team' && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.1)', color: '#EAB308' }}>
+                Team
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--muted)' }}>
             <span>
@@ -578,6 +602,27 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* ── Free tier limit warning ───────────── */}
+        {plan === 'free' && counts.total >= 45 && (
+          <div
+            className="rounded-xl px-4 py-3 mb-5 flex items-center justify-between"
+            style={{ background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.2)' }}
+          >
+            <div className="text-xs" style={{ color: '#EAB308' }}>
+              {counts.total >= 50
+                ? '⚠ Task limit reached (50/50). Upgrade to add more.'
+                : `⚠ Approaching free limit (${counts.total}/50 tasks).`}
+            </div>
+            <a
+              href="mailto:hello@tendon.alashed.kz?subject=Pro plan"
+              className="text-xs px-3 py-1 rounded-lg ml-4 shrink-0"
+              style={{ background: 'rgba(234,179,8,0.15)', color: '#EAB308' }}
+            >
+              Upgrade →
+            </a>
+          </div>
+        )}
 
         {/* ── Connect Claude / Claude tip ───────── */}
         {!loading && tasks.length === 0 ? (

@@ -74,14 +74,15 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return { data: { user, workspaces } };
   });
 
-  // Check if user has an active Claude Code OAuth token
+  // Check if user has an active Claude Code OAuth token + plan info
   app.get('/auth/claude-status', { preHandler: authenticate }, async (request) => {
     const result = await query<{
       created_at: string;
       expires_at: string;
       workspace_name: string;
+      workspace_id: string;
     }>(
-      `SELECT t.created_at, t.expires_at, w.name AS workspace_name
+      `SELECT t.created_at, t.expires_at, w.name AS workspace_name, w.id AS workspace_id
        FROM oauth_access_tokens t
        JOIN workspaces w ON w.id = t.workspace_id
        WHERE t.user_id = $1
@@ -93,12 +94,23 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     );
 
     const token = result.rows[0];
+
+    // Get plan for personal workspace
+    const workspaces = await workspaceRepository.listForUser(request.user.sub);
+    const personal = workspaces.find(w => w.type === 'personal') ?? workspaces[0];
+    const planResult = personal ? await query<{ plan: string }>(
+      `SELECT plan FROM subscriptions WHERE workspace_id = $1`,
+      [personal.id],
+    ) : null;
+    const plan = planResult?.rows[0]?.plan ?? 'free';
+
     return {
       data: {
         connected: !!token,
         workspace_name: token?.workspace_name ?? null,
         connected_at: token?.created_at ?? null,
         expires_at: token?.expires_at ?? null,
+        plan,
       },
     };
   });
