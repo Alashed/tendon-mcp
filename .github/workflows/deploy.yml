@@ -62,7 +62,7 @@ jobs:
               'node dist/scripts/migrate.js',
               'pm2 delete tendon-api 2>/dev/null || true',
               'pm2 delete alashed-tendon-api 2>/dev/null || true',
-              'TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }} CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} pm2 start /home/ubuntu/alashed-tracker/ecosystem.config.cjs',
+              'CORS_ORIGINS=https://tendon.alashed.kz,https://www.tendon.alashed.kz TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }} CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} API_BASE_URL=https://api.tendon.alashed.kz pm2 start /home/ubuntu/alashed-tracker/ecosystem.config.cjs',
               'pm2 save',
               'echo DONE'
             ]" \
