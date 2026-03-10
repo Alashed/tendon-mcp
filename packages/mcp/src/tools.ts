@@ -47,6 +47,40 @@ function taskLine(t: { title: string; priority: string }, prefix = '  ├─', i
 export function registerTools(server: McpServer, api: ApiClient, workspaceId: string, userId: string): void {
 
   server.tool(
+    'whoami',
+    'Verify the connection to Tendon and show your current workspace, user info, and task counts. Call this first to confirm everything is working.',
+    {},
+    async () => {
+      const me = await api.get<{
+        user: { name: string; email: string };
+        workspaces: Array<{ id: string; name: string; type: string; role: string }>;
+      }>('/auth/me');
+
+      const workspace = me.workspaces.find(w => w.id === workspaceId) ?? me.workspaces[0];
+
+      const [inProgress, planned] = await Promise.all([
+        api.get<unknown[]>(`/tasks?workspace_id=${workspaceId}&status=in_progress`),
+        api.get<unknown[]>(`/tasks?workspace_id=${workspaceId}&status=planned`),
+      ]);
+
+      const lines = [
+        header('✓ Connected to Tendon'),
+        '',
+        `  User      : ${me.user.name} <${me.user.email}>`,
+        `  Workspace : ${workspace?.name ?? workspaceId}`,
+        `  Role      : ${workspace?.role ?? 'member'}`,
+        '',
+        `  Tasks in progress : ${inProgress.length}`,
+        `  Tasks planned     : ${planned.length}`,
+        '',
+        `  Say "start my day" or "get today's plan" to get started.`,
+      ];
+
+      return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
+    },
+  );
+
+  server.tool(
     'create_task',
     'Create a new task in your workspace',
     {

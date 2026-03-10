@@ -232,6 +232,7 @@ export default function DashboardPage() {
   const [focusLoading, setFocusLoading] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const [showInvite, setShowInvite] = useState(false);
+  const [claudeConnected, setClaudeConnected] = useState<boolean | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Live timer tick
@@ -244,21 +245,27 @@ export default function DashboardPage() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [activeSession]);
 
-  // Load workspaces once
+  // Load workspaces + Claude connection status once
   useEffect(() => {
     const load = async () => {
       const token = await getToken();
       if (!token) return;
       try {
-        const res = await fetch(`${API_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) return;
-        const { data } = await res.json();
-        const list: Workspace[] = data.workspaces ?? [];
-        setWorkspaces(list);
-        const personal = list.find((w) => w.type === 'personal') ?? list[0];
-        if (personal) setWorkspaceId(personal.id);
+        const [meRes, claudeRes] = await Promise.all([
+          fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${API_URL}/auth/claude-status`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+        if (meRes.ok) {
+          const { data } = await meRes.json();
+          const list: Workspace[] = data.workspaces ?? [];
+          setWorkspaces(list);
+          const personal = list.find((w) => w.type === 'personal') ?? list[0];
+          if (personal) setWorkspaceId(personal.id);
+        }
+        if (claudeRes.ok) {
+          const { data } = await claudeRes.json();
+          setClaudeConnected(data.connected);
+        }
       } catch { /* ignore */ }
     };
     load();
@@ -453,7 +460,30 @@ export default function DashboardPage() {
 
         {/* ── Greeting + meta ───────────────────── */}
         <div className="mb-6">
-          <h1 className="font-display text-2xl font-bold mb-1">Good work, {displayName}.</h1>
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="font-display text-2xl font-bold">Good work, {displayName}.</h1>
+
+            {/* Claude connection badge */}
+            {claudeConnected === true && (
+              <span
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
+                style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.2)' }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22C55E' }} />
+                Claude connected
+              </span>
+            )}
+            {claudeConnected === false && (
+              <a
+                href="/onboarding"
+                className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full transition-all"
+                style={{ background: 'rgba(59,130,246,0.07)', color: 'var(--accent)', border: '1px solid rgba(59,130,246,0.2)' }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent)', opacity: 0.5 }} />
+                Connect Claude →
+              </a>
+            )}
+          </div>
           <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--muted)' }}>
             <span>
               Tracked today:{' '}

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getContainer } from '../../di/container.js';
 import { ConflictError, UnauthorizedError } from '../../shared/errors/AppError.js';
 import { authenticate } from '../middleware/auth.js';
+import { query } from '../../shared/db/pool.js';
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {
@@ -71,5 +72,34 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const user = await userRepository.findById(request.user.sub);
     const workspaces = await workspaceRepository.listForUser(request.user.sub);
     return { data: { user, workspaces } };
+  });
+
+  // Check if user has an active Claude Code OAuth token
+  app.get('/auth/claude-status', { preHandler: authenticate }, async (request) => {
+    const result = await query<{
+      created_at: string;
+      expires_at: string;
+      workspace_name: string;
+    }>(
+      `SELECT t.created_at, t.expires_at, w.name AS workspace_name
+       FROM oauth_access_tokens t
+       JOIN workspaces w ON w.id = t.workspace_id
+       WHERE t.user_id = $1
+         AND t.revoked = FALSE
+         AND t.expires_at > NOW()
+       ORDER BY t.created_at DESC
+       LIMIT 1`,
+      [request.user.sub],
+    );
+
+    const token = result.rows[0];
+    return {
+      data: {
+        connected: !!token,
+        workspace_name: token?.workspace_name ?? null,
+        connected_at: token?.created_at ?? null,
+        expires_at: token?.expires_at ?? null,
+      },
+    };
   });
 }
