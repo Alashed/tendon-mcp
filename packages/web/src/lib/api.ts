@@ -12,9 +12,7 @@ async function apiFetch<T>(path: string, token: string, options: RequestInit = {
   const data = await res.json();
 
   if (!res.ok) {
-    throw new Error(
-      data?.message ?? data?.error ?? `Request failed (${res.status})`
-    );
+    throw new Error(data?.message ?? data?.error ?? `Request failed (${res.status})`);
   }
   return data as T;
 }
@@ -62,4 +60,53 @@ export async function updateTask(
 
 export async function deleteTask(taskId: string, token: string): Promise<void> {
   await apiFetch<void>(`/tasks/${taskId}`, token, { method: 'DELETE' });
+}
+
+/* ── Activities (Focus Sessions) ───────────────────────── */
+
+export interface Activity {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  task_id: string | null;
+  start_time: string;
+  end_time: string | null;
+  source: string;
+}
+
+export async function getActivities(
+  workspaceId: string,
+  token: string,
+  date?: string
+): Promise<Activity[]> {
+  const d = date ?? new Date().toISOString().split('T')[0];
+  const res = await apiFetch<{ data: Activity[] }>(
+    `/activities?workspace_id=${encodeURIComponent(workspaceId)}&date=${d}`,
+    token
+  );
+  return res.data;
+}
+
+export async function startActivity(
+  workspaceId: string,
+  token: string,
+  taskId?: string
+): Promise<Activity> {
+  const res = await apiFetch<{ data: Activity }>('/activities/start', token, {
+    method: 'POST',
+    body: JSON.stringify({ workspace_id: workspaceId, task_id: taskId, source: 'web' }),
+  });
+  return res.data;
+}
+
+export async function stopActivity(
+  workspaceId: string,
+  token: string,
+  activityId?: string
+): Promise<Activity | null> {
+  const res = await apiFetch<{ data: Activity | null }>('/activities/stop', token, {
+    method: 'POST',
+    body: JSON.stringify({ workspace_id: workspaceId, activity_id: activityId }),
+  });
+  return res.data;
 }
