@@ -259,6 +259,9 @@ export default function OnboardingPage() {
             >
               {copied === 'cmd' ? '✓ Copied' : 'Copy command'}
             </button>
+            <p className="text-xs mt-2" style={{ color: 'var(--subtle)' }}>
+              If tendon exists but shows &quot;Failed to connect&quot;: <code className="text-[11px]">claude mcp remove tendon</code> then add again. Restart Claude Code.
+            </p>
           </div>
 
           {/* Step 2 — type in Claude */}
@@ -287,7 +290,7 @@ export default function OnboardingPage() {
                 <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
                   {connected === true
                     ? 'Tendon is now tracking your work.'
-                    : 'A browser opens — click Allow. Only happens once.'}
+                    : 'Restart Claude Code if you just added, then type this. A browser opens for login.'}
                 </p>
               </div>
             </div>
