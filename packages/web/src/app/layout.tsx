@@ -25,13 +25,13 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Alashed — Task tracking for Claude Code',
+  title: 'Tendon — Task tracking for Claude Code',
   description:
     'Connect your task board to Claude Code in one command. No config files, no tokens, no friction.',
   openGraph: {
-    title: 'Alashed Tracker',
+    title: 'Tendon',
     description: "Your tasks, in Claude's hands.",
-    siteName: 'Alashed',
+    siteName: 'Tendon',
   },
 };
 

@@ -33,7 +33,7 @@ export default function LandingPage() {
       {/* ── Nav ──────────────────────────────────────── */}
       <nav className="relative z-10 flex items-center justify-between px-6 py-5 max-w-6xl mx-auto">
         <div className="font-display font-bold text-xl tracking-tight select-none">
-          <span style={{ color: 'var(--accent)' }}>alashed</span>
+          <span style={{ color: 'var(--accent)' }}>tendon</span>
           <span style={{ color: 'var(--muted)' }}>.</span>
         </div>
         <div className="flex items-center gap-5">
@@ -156,7 +156,7 @@ export default function LandingPage() {
             {
               step: '01',
               title: 'Create your account',
-              desc: 'Sign up at tracker.alashed.kz. Your personal workspace is created automatically.',
+              desc: 'Sign up at tracker.alashed.kz. Your personal workspace is ready instantly.',
               detail: 'Takes 30 seconds',
             },
             {
@@ -260,7 +260,7 @@ export default function LandingPage() {
             style={{ background: 'radial-gradient(ellipse at 80% 0%, rgba(245,158,11,0.05) 0%, transparent 60%)' }}
           />
           <div className="text-xs mb-5 font-mono" style={{ color: 'var(--muted)' }}>
-            Claude Code · Alashed MCP · Live conversation
+            Claude Code · Tendon MCP · Live conversation
           </div>
           <div className="space-y-4 text-sm">
             {[
@@ -315,7 +315,7 @@ export default function LandingPage() {
         style={{ borderColor: 'var(--border)', color: 'var(--subtle)' }}
       >
         <p>
-          © 2026 Alashed &mdash; Built for developers who live in Claude Code.
+          © 2026 Tendon &mdash; Built for developers who live in Claude Code.
         </p>
       </footer>
     </div>

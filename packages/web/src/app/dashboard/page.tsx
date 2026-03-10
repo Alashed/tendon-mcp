@@ -129,7 +129,7 @@ export default function DashboardPage() {
       >
         <div className="flex items-center gap-6">
           <Link href="/" className="font-display font-bold text-base">
-            <span style={{ color: 'var(--accent)' }}>alashed</span>
+            <span style={{ color: 'var(--accent)' }}>tendon</span>
             <span style={{ color: 'var(--muted)' }}>.</span>
           </Link>
           <span className="text-sm hidden sm:block" style={{ color: 'var(--muted)' }}>

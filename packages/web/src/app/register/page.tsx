@@ -8,7 +8,7 @@ export default function RegisterPage() {
       {/* ── SignUp side ─────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <Link href="/" className="font-display font-bold text-lg mb-10 self-start max-w-sm w-full">
-          <span style={{ color: 'var(--accent)' }}>alashed</span>
+          <span style={{ color: 'var(--accent)' }}>tendon</span>
           <span style={{ color: 'var(--muted)' }}>.</span>
         </Link>
 

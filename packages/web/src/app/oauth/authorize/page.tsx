@@ -96,7 +96,7 @@ function OAuthConsent() {
           Connect Claude Code
         </h1>
         <p className="text-sm text-center mb-1" style={{ color: 'var(--muted)' }}>
-          Claude Code is requesting access to your Alashed workspace
+          Claude Code is requesting access to your Tendon workspace
         </p>
         <p className="text-xs text-center mb-6" style={{ color: 'var(--subtle)' }}>
           as{' '}

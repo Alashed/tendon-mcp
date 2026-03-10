@@ -8,7 +8,7 @@ export default function LoginPage() {
       {/* ── SignIn side ─────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <Link href="/" className="font-display font-bold text-lg mb-10 self-start max-w-sm w-full">
-          <span style={{ color: 'var(--accent)' }}>alashed</span>
+          <span style={{ color: 'var(--accent)' }}>tendon</span>
           <span style={{ color: 'var(--muted)' }}>.</span>
         </Link>
 
@@ -62,7 +62,7 @@ export default function LoginPage() {
         <div className="relative max-w-sm animate-fade-in delay-300">
           <div className="terminal-cmd text-sm leading-relaxed">
             <div className="text-xs mb-4" style={{ color: 'var(--muted)' }}>
-              Claude Code · Alashed MCP
+              Claude Code · Tendon MCP
             </div>
             <div className="space-y-3">
               <div>
@@ -77,7 +77,7 @@ export default function LoginPage() {
             </div>
           </div>
           <p className="text-xs text-center mt-3" style={{ color: 'var(--subtle)' }}>
-            This is what Claude sees after connecting Alashed
+            This is what Claude sees after connecting Tendon
           </p>
         </div>
       </div>
