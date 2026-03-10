@@ -19,8 +19,8 @@ claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp
 
 1. [Create a free account →](https://tendon.alashed.kz/register)
 2. Run the command above in your terminal
-3. Claude opens a browser — click **Allow**
-4. Ask anything
+3. Open Claude Code → type `tendon whoami` → browser opens → click **Allow**
+4. Done. Just talk: "Create tasks…", "What did I do yesterday?"
 
 Full web dashboard, team features, Telegram reports, analytics.
 
@@ -96,27 +96,31 @@ mcp.tendon.alashed.kz   →  MCP Server           (port 3002)
 | Auth | Clerk (web) + OAuth 2.1 + PKCE (Claude Code) |
 | Infra | AWS EC2, RDS PostgreSQL, S3, SSM |
 
-### OAuth flow (how Claude Code gets access)
+### OAuth flow (RFC 9728 — MCP = resource server only)
 
 ```
-Claude Code              MCP Server                 API
-    │                        │                        │
-    ├─ GET /.well-known ─────►│                        │
-    │◄─ authorization_servers─┤                        │
-    │                        │                        │
-    ├─ POST /mcp ────────────►│                        │
-    │◄─ 401 WWW-Authenticate ─┤                        │
-    │                        │                        │
-    ├─ browser: /oauth/authorize ───────────────────►  │
-    │◄─ redirect with code ───────────────────────── │
-    │                        │                        │
-    ├─ POST /oauth/token ──────────────────────────►  │
-    │◄─ access_token ─────────────────────────────── │
-    │                        │                        │
-    ├─ POST /mcp (Bearer) ───►│                        │
-    │                        ├─ POST /oauth/introspect►│
-    │                        │◄─ { user_id, workspace }│
-    │◄─ tool result ──────────┤                        │
+Claude Code              MCP (mcp.*)          Web (tendon.*)         API (api.*)
+    │                        │                        │                        │
+    ├─ POST /mcp ────────────►│                        │                        │
+    │◄─ 401 WWW-Authenticate ─┤   resource_metadata=   │                        │
+    │    (points to tendon.*) │   tendon.../oauth-     │                        │
+    │                         │   protected-resource   │                        │
+    ├─ GET /.well-known/oauth-protected-resource ─────►│                        │
+    │◄─ { resource, authorization_servers } ───────────┤                        │
+    │                         │                        │                        │
+    ├─ GET /.well-known/oauth-authorization-server ───────────────────────────►│
+    │◄─ { authorization_endpoint, token_endpoint } ───────────────────────────┤
+    │                         │                        │                        │
+    ├─ browser: /oauth/authorize ─────────────────────►│  (Clerk + consent)     │
+    │◄─ redirect with code ────────────────────────────┤                        │
+    │                         │                        │                        │
+    ├─ POST /oauth/token ──────────────────────────────┼───────────────────────►│
+    │◄─ access_token ─────────────────────────────────┼────────────────────────┤
+    │                         │                        │                        │
+    ├─ POST /mcp (Bearer) ───►│                        │                        │
+    │                         ├─ POST /oauth/introspect───────────────────────►│
+    │                         │◄─ { user_id, workspace }───────────────────────┤
+    │◄─ tool result ──────────┤                        │                        │
 ```
 
 ---

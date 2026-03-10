@@ -219,9 +219,7 @@ export default function OnboardingPage() {
             </p>
             <h1 className="font-display text-3xl font-bold mb-2">Connect Claude Code</h1>
             <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              {mode === 'solo'
-                ? 'Two steps. Claude will start tracking your work automatically.'
-                : 'Connect your Claude. Teammates connect separately with the same command.'}
+              One time: add MCP → type tendon whoami → browser opens → log in. Then just talk to Claude.
             </p>
           </div>
 
@@ -260,7 +258,7 @@ export default function OnboardingPage() {
               {copied === 'cmd' ? '✓ Copied' : 'Copy command'}
             </button>
             <p className="text-xs mt-2" style={{ color: 'var(--subtle)' }}>
-              If tendon exists but shows &quot;Failed to connect&quot;: <code className="text-[11px]">claude mcp remove tendon</code> then add again. Restart Claude Code.
+              If tendon shows &quot;Failed to connect&quot;: <code className="text-[11px]">claude mcp remove tendon</code>, add again, then restart Claude Code — MCP loads only at startup.
             </p>
           </div>
 
@@ -287,11 +285,11 @@ export default function OnboardingPage() {
                 <p className="text-sm font-medium">
                   {connected === true ? 'Claude is connected!' : 'Open Claude Code — type this in chat'}
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-                  {connected === true
-                    ? 'Tendon is now tracking your work.'
-                    : 'Restart Claude Code if you just added, then type this. A browser opens for login.'}
-                </p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+              {connected === true
+                ? 'Tendon is now tracking your work.'
+                : 'Type this — Claude opens a browser for login. First time only.'}
+            </p>
               </div>
             </div>
 

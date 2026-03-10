@@ -9,36 +9,25 @@ import { registerPrompts } from './prompts.js';
 
 const PORT = parseInt(process.env['PORT'] ?? '3002', 10);
 const API_URL = process.env['ALASHED_API_URL'] ?? 'http://localhost:3001';
-const MCP_BASE_URL = process.env['MCP_BASE_URL'] ?? 'https://mcp.tendon.alashed.kz';
+const RESOURCE_METADATA_URL =
+  process.env['RESOURCE_METADATA_URL'] ?? 'https://tendon.alashed.kz/.well-known/oauth-protected-resource';
 
 const app = express();
 app.use(express.json());
-
-// ── RFC 9728: Protected Resource Metadata ────────────────────────────────────
-app.get('/.well-known/oauth-protected-resource', (_req, res) => {
-  const authServer = API_URL.replace('http://localhost:3001', 'https://api.tendon.alashed.kz');
-  res.json({
-    resource: MCP_BASE_URL,
-    resource_name: 'Tendon MCP',
-    authorization_servers: [authServer],
-    bearer_methods_supported: ['header'],
-    scopes_supported: ['mcp'],
-  });
-});
 
 // ── Health ───────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'tendon-mcp', ts: new Date().toISOString() });
 });
 
-// ── MCP endpoint ─────────────────────────────────────────────────────────────
+// ── MCP endpoint (resource server only — no /authorize, /token) ───────────────
 app.post('/mcp', async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
   if (!token) {
     res.status(401)
-      .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${MCP_BASE_URL}/.well-known/oauth-protected-resource"`)
+      .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}"`)
       .json({ error: 'missing_token', error_description: 'Authorization header required' });
     return;
   }
@@ -48,7 +37,7 @@ app.post('/mcp', async (req, res) => {
     tokenInfo = await validateBearerToken(token);
   } catch {
     res.status(401)
-      .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${MCP_BASE_URL}/.well-known/oauth-protected-resource", error="invalid_token"`)
+      .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}", error="invalid_token"`)
       .json({ error: 'invalid_token', error_description: 'Token invalid or expired' });
     return;
   }
@@ -123,5 +112,5 @@ Always stop the session when the user switches tasks or says they're done.`;
 
 app.listen(PORT, () => {
   console.log(`Tendon MCP server on port ${PORT}`);
-  console.log(`API: ${API_URL} | MCP: ${MCP_BASE_URL}`);
+  console.log(`API: ${API_URL} | resource_metadata: ${RESOURCE_METADATA_URL}`);
 });
