@@ -1,16 +1,36 @@
 {
   "name": "tendon-cli",
-  "version": "0.1.0",
-  "description": "Task tracking that lives inside Claude Code",
+  "version": "0.1.1",
+  "description": "Task tracking that lives inside Claude Code — setup wizard",
   "type": "module",
   "bin": {
-    "tendon": "dist/index.js"
+    "tendon": "dist/index.js",
+    "tendon-cli": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "claude",
+    "mcp",
+    "task-tracker",
+    "claude-code",
+    "tendon",
+    "productivity",
+    "cli"
+  ],
+  "homepage": "https://tendon.alashed.kz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Alashed/tendon-mcp.git"
+  },
+  "license": "MIT",
   "dependencies": {
     "@clack/prompts": "^0.9.1",
     "picocolors": "^1.1.1"
