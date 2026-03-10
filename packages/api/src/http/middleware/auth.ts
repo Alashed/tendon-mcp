@@ -22,7 +22,8 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
       );
       request.user = { sub: user.id, email: user.email, workspace_id: workspaceId };
       return;
-    } catch {
+    } catch (err) {
+      request.log.warn({ err: (err as Error).message }, 'Clerk JWT verification failed');
       // fall through to OAuth
     }
   }
