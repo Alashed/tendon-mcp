@@ -228,6 +228,125 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
   );
 
   server.tool(
+    'update_task',
+    'Edit a task — change title, description, priority, or due date',
+    {
+      task_id: z.string().describe('Task UUID'),
+      title: z.string().optional().describe('New title'),
+      description: z.string().optional().describe('New description'),
+      priority: z.enum(['low', 'medium', 'high']).optional().describe('New priority'),
+      due_date: z.string().optional().describe('New due date YYYY-MM-DD'),
+    },
+    async ({ task_id, title, description, priority, due_date }) => {
+      const updates: Record<string, unknown> = {};
+      if (title !== undefined) updates['title'] = title;
+      if (description !== undefined) updates['description'] = description;
+      if (priority !== undefined) updates['priority'] = priority;
+      if (due_date !== undefined) updates['due_date'] = due_date;
+
+      const task = await api.patch<Task>(`/tasks/${task_id}`, updates);
+      const changed = Object.keys(updates).join(', ');
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `✓  Task updated\n   ${task.title}\n   Changed : ${changed}`,
+        }],
+      };
+    },
+  );
+
+  server.tool(
+    'archive_task',
+    'Archive (delete) a task — removes it from your active list',
+    {
+      task_id: z.string().describe('Task UUID to archive'),
+    },
+    async ({ task_id }) => {
+      const task = await api.get<Task>(`/tasks/${task_id}`);
+      await api.patch<Task>(`/tasks/${task_id}`, { status: 'archived' });
+      return {
+        content: [{
+          type: 'text' as const,
+          text: `×  Task archived\n   ${task.title}`,
+        }],
+      };
+    },
+  );
+
+  server.tool(
+    'week_summary',
+    'Get a summary of the last 7 days — focus time, tasks done, productivity patterns',
+    {},
+    async () => {
+      const days = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        return d.toISOString().split('T')[0]!;
+      });
+
+      const results = await Promise.all(
+        days.map(date =>
+          api.get<{
+            date: string;
+            users: Array<{
+              focus_minutes: number;
+              session_count: number;
+              tasks_done_today: Array<{ title: string }>;
+              tasks_in_progress: Array<{ title: string }>;
+            }>;
+            totals: { total_focus_minutes: number; total_done_today: number };
+          }>(`/reports/daily?workspace_id=${workspaceId}&date=${date}&user_id=${userId}`)
+          .catch(() => null),
+        ),
+      );
+
+      let totalMins = 0;
+      let totalDone = 0;
+      let bestDay = { date: '', minutes: 0 };
+      const dayLines: string[] = [];
+
+      for (let i = 0; i < days.length; i++) {
+        const date = days[i]!;
+        const r = results[i];
+        const me = r?.users?.[0];
+        const mins = me?.focus_minutes ?? 0;
+        const done = r?.totals?.total_done_today ?? 0;
+
+        totalMins += mins;
+        totalDone += done;
+        if (mins > bestDay.minutes) bestDay = { date, minutes: mins };
+
+        const dayLabel = new Date(date + 'T12:00:00Z').toLocaleDateString('en', {
+          weekday: 'short', month: 'short', day: 'numeric',
+        });
+        const b = bar(mins, 480, 8);
+        const sessions = me?.session_count ?? 0;
+        const doneStr = done > 0 ? `  ✓${done}` : '    ';
+        dayLines.push(`  ${pad(dayLabel, 14)} ${b}  ${pad(fmtTime(mins), 7)} ${doneStr}  ${sessions}sess`);
+      }
+
+      const avgMins = Math.round(totalMins / 7);
+      const bestLabel = bestDay.date
+        ? new Date(bestDay.date + 'T12:00:00Z').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })
+        : '—';
+
+      const lines = [
+        header('Weekly Summary — last 7 days'),
+        '',
+        `  ⏱  Total   ${fmtTime(totalMins)}   avg ${fmtTime(avgMins)}/day`,
+        `  ✓  Done    ${totalDone} tasks`,
+        `  ★  Best    ${bestLabel}  (${fmtTime(bestDay.minutes)})`,
+        '',
+        `  ${'Day           '}  Focus           Time     Done Sess`,
+        `  ${'─'.repeat(56)}`,
+        ...dayLines,
+      ];
+
+      return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
+    },
+  );
+
+  server.tool(
     'log_blocker',
     'Log a blocker or note for a task',
     {

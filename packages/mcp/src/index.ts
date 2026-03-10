@@ -5,6 +5,7 @@ import 'dotenv/config';
 import { ApiClient } from './api-client.js';
 import { validateBearerToken } from './auth.js';
 import { registerTools } from './tools.js';
+import { registerPrompts } from './prompts.js';
 
 const PORT = parseInt(process.env['PORT'] ?? '3002', 10);
 const API_URL = process.env['ALASHED_API_URL'] ?? 'http://localhost:3001';
@@ -13,7 +14,7 @@ const MCP_BASE_URL = process.env['MCP_BASE_URL'] ?? 'https://mcp.tendon.alashed.
 const app = express();
 app.use(express.json());
 
-// ── RFC 9728: Protected Resource Metadata ────────────────────────────────
+// ── RFC 9728: Protected Resource Metadata ────────────────────────────────────
 app.get('/.well-known/oauth-protected-resource', (_req, res) => {
   res.json({
     resource: MCP_BASE_URL,
@@ -23,12 +24,12 @@ app.get('/.well-known/oauth-protected-resource', (_req, res) => {
   });
 });
 
-// ── Health ───────────────────────────────────────────────────────────────
+// ── Health ───────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'tendon-mcp', ts: new Date().toISOString() });
 });
 
-// ── MCP endpoint ─────────────────────────────────────────────────────────
+// ── MCP endpoint ─────────────────────────────────────────────────────────────
 app.post('/mcp', async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -52,10 +53,18 @@ app.post('/mcp', async (req, res) => {
 
   const workspaceId = (req.headers['x-workspace-id'] as string) ?? tokenInfo.workspace_id;
   const userId = tokenInfo.sub;
+  const userEmail = tokenInfo.email;
   const api = new ApiClient(API_URL, token);
 
-  const server = new McpServer({ name: 'tendon', version: '1.0.0' });
+  const instructions = buildInstructions(userEmail, workspaceId);
+
+  const server = new McpServer(
+    { name: 'tendon', version: '1.0.0' },
+    { instructions },
+  );
+
   registerTools(server, api, workspaceId, userId);
+  registerPrompts(server, workspaceId);
 
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
@@ -70,7 +79,43 @@ app.post('/mcp', async (req, res) => {
   }
 });
 
+// ── Server instructions ───────────────────────────────────────────────────────
+function buildInstructions(email: string, workspaceId: string): string {
+  const today = new Date().toLocaleDateString('en', { weekday: 'long', month: 'long', day: 'numeric' });
+  return `\
+You are connected to Tendon — a personal work tracker for developers.
+Today is ${today}.
+User: ${email} | Workspace: ${workspaceId}
+
+## When to call tools (without being asked)
+
+- START OF SESSION → call get_today_plan automatically to show current state
+- User says "что делал вчера" / "what did I do yesterday" → get_daily_summary(date="yesterday")
+- User says "что делаю сегодня" / "plan for today" → get_today_plan
+- User says "начинаю / working on X" → start_focus_session(task_id) if task exists, else create_task first
+- User says "готово / done / закончил X" → update_task_status(done) + stop_focus_session
+- User says "создай задачи / create tasks" → create_task for each, then start_focus_session on first
+- User says "заблокирован / blocked by" → log_blocker
+
+## Task IDs
+
+Always use IDs returned from get_today_plan or list_tasks.
+Never guess or invent task IDs.
+
+## Priority mapping
+
+When user says:
+- "срочно / urgent / critical" → high
+- default → medium
+- "потом / someday / low" → low
+
+## Focus sessions
+
+Only one focus session runs at a time — start_focus_session auto-stops the previous one.
+Always stop the session when the user switches tasks or says they're done.`;
+}
+
 app.listen(PORT, () => {
-  console.log(`Alashed MCP server on port ${PORT}`);
+  console.log(`Tendon MCP server on port ${PORT}`);
   console.log(`API: ${API_URL} | MCP: ${MCP_BASE_URL}`);
 });
