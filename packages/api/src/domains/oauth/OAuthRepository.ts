@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
 import { query } from '../../shared/db/pool.js';
-import type { OAuthClient, OAuthCode, OAuthAccessToken, IntrospectionResult } from './types.js';
+import type { OAuthClient, OAuthCode, OAuthAccessToken, OAuthRefreshToken, IntrospectionResult } from './types.js';
 
 export class OAuthRepository {
   async createClient(dto: {
@@ -106,5 +106,34 @@ export class OAuthRepository {
 
   async revokeToken(token: string): Promise<void> {
     await query('UPDATE oauth_access_tokens SET revoked = TRUE WHERE token = $1', [token]);
+  }
+
+  // ── Refresh tokens ───────────────────────────────────────────────────────
+
+  async createRefreshToken(dto: {
+    client_id: string;
+    user_id: string;
+    workspace_id: string;
+    scope?: string;
+  }): Promise<OAuthRefreshToken> {
+    const token = randomBytes(40).toString('hex');
+    const result = await query<OAuthRefreshToken>(
+      `INSERT INTO oauth_refresh_tokens (token, client_id, user_id, workspace_id, scope)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [token, dto.client_id, dto.user_id, dto.workspace_id, dto.scope ?? null],
+    );
+    return result.rows[0]!;
+  }
+
+  async consumeRefreshToken(token: string): Promise<OAuthRefreshToken | null> {
+    // Mark as used atomically — prevents replay attacks
+    const result = await query<OAuthRefreshToken>(
+      `UPDATE oauth_refresh_tokens
+       SET used = TRUE
+       WHERE token = $1 AND used = FALSE AND expires_at > NOW()
+       RETURNING *`,
+      [token],
+    );
+    return result.rows[0] ?? null;
   }
 }

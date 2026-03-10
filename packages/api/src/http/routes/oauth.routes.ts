@@ -19,7 +19,7 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
       introspection_endpoint: `${base}/oauth/introspect`,
       scopes_supported: ['mcp'],
       response_types_supported: ['code'],
-      grant_types_supported: ['authorization_code'],
+      grant_types_supported: ['authorization_code', 'refresh_token'],
       code_challenge_methods_supported: ['S256'],
       token_endpoint_auth_methods_supported: ['none'],
     });
@@ -122,21 +122,35 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
-  // ── POST /oauth/token — Exchange code for access token ───────────────────
+  // ── POST /oauth/token — Exchange code or refresh token ───────────────────
   app.post('/oauth/token', async (request, reply) => {
-    const Schema = z.object({
-      grant_type: z.string(),
-      code: z.string(),
-      redirect_uri: z.string(),
-      client_id: z.string(),
-      code_verifier: z.string(),
-    });
-
-    const body = Schema.parse(request.body);
+    const body = request.body as Record<string, string>;
     const { oauthService } = getContainer();
 
     try {
-      const token = await oauthService.exchangeCode(body);
+      let token;
+
+      if (body['grant_type'] === 'refresh_token') {
+        // Refresh token rotation
+        const refreshToken = body['refresh_token'];
+        const clientId = body['client_id'];
+        if (!refreshToken || !clientId) {
+          return reply.status(400).send({ error: 'invalid_request', error_description: 'refresh_token and client_id required' });
+        }
+        token = await oauthService.refreshAccessToken(refreshToken, clientId);
+      } else {
+        // Authorization code exchange
+        const Schema = z.object({
+          grant_type: z.string(),
+          code: z.string(),
+          redirect_uri: z.string(),
+          client_id: z.string(),
+          code_verifier: z.string(),
+        });
+        const parsed = Schema.parse(body);
+        token = await oauthService.exchangeCode(parsed);
+      }
+
       return reply
         .header('Cache-Control', 'no-store')
         .header('Pragma', 'no-cache')

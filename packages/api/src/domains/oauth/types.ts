@@ -38,6 +38,18 @@ export interface OAuthAccessToken {
   created_at: string;
 }
 
+export interface OAuthRefreshToken {
+  id: string;
+  token: string;
+  client_id: string;
+  user_id: string;
+  workspace_id: string;
+  scope: string | null;
+  expires_at: string;
+  used: boolean;
+  created_at: string;
+}
+
 export interface IntrospectionResult extends OAuthAccessToken {
   user_email: string;
 }

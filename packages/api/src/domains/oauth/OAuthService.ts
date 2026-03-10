@@ -30,6 +30,7 @@ export interface TokenRequest {
   redirect_uri: string;
   client_id: string;
   code_verifier: string;
+  refresh_token?: string;
 }
 
 export class OAuthService {
@@ -121,6 +122,7 @@ export class OAuthService {
 
   async exchangeCode(req: TokenRequest): Promise<{
     access_token: string;
+    refresh_token: string;
     token_type: string;
     expires_in: number;
     scope: string | null;
@@ -137,20 +139,66 @@ export class OAuthService {
       throw new AppError(400, 'invalid_grant: PKCE verification failed');
     }
 
-    // Mark used BEFORE issuing token (prevents replay)
+    // Mark used BEFORE issuing tokens (prevents replay)
     await this.oauthRepo.markCodeUsed(code.id);
 
-    const token = await this.oauthRepo.createAccessToken({
-      client_id: code.client_id,
-      user_id: code.user_id,
-      workspace_id: code.workspace_id,
-      scope: code.scope ?? undefined,
-    });
+    const [token, refresh] = await Promise.all([
+      this.oauthRepo.createAccessToken({
+        client_id: code.client_id,
+        user_id: code.user_id,
+        workspace_id: code.workspace_id,
+        scope: code.scope ?? undefined,
+      }),
+      this.oauthRepo.createRefreshToken({
+        client_id: code.client_id,
+        user_id: code.user_id,
+        workspace_id: code.workspace_id,
+        scope: code.scope ?? undefined,
+      }),
+    ]);
 
     return {
       access_token: token.token,
+      refresh_token: refresh.token,
       token_type: 'Bearer',
-      expires_in: 3600,
+      expires_in: 86400, // 24 hours
+      scope: token.scope,
+    };
+  }
+
+  async refreshAccessToken(refreshToken: string, clientId: string): Promise<{
+    access_token: string;
+    refresh_token: string;
+    token_type: string;
+    expires_in: number;
+    scope: string | null;
+  }> {
+    // Consume old refresh token (single-use rotation)
+    const old = await this.oauthRepo.consumeRefreshToken(refreshToken);
+    if (!old) throw new AppError(400, 'invalid_grant: refresh token not found, expired, or already used');
+    if (old.client_id !== clientId) throw new AppError(400, 'invalid_grant: client_id mismatch');
+
+    // Issue new access token + new refresh token
+    const [token, refresh] = await Promise.all([
+      this.oauthRepo.createAccessToken({
+        client_id: old.client_id,
+        user_id: old.user_id,
+        workspace_id: old.workspace_id,
+        scope: old.scope ?? undefined,
+      }),
+      this.oauthRepo.createRefreshToken({
+        client_id: old.client_id,
+        user_id: old.user_id,
+        workspace_id: old.workspace_id,
+        scope: old.scope ?? undefined,
+      }),
+    ]);
+
+    return {
+      access_token: token.token,
+      refresh_token: refresh.token,
+      token_type: 'Bearer',
+      expires_in: 86400,
       scope: token.scope,
     };
   }
