@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useUser, useAuth } from '@clerk/nextjs';
 
 const COMMAND = 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp';
-const TEST_PROMPT = 'tendon whoami';
+const TEST_PROMPT = 'start my day';
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
 
 type Step = 'choose' | 'connect' | 'ready';
@@ -219,7 +219,7 @@ export default function OnboardingPage() {
             </p>
             <h1 className="font-display text-3xl font-bold mb-2">Connect Claude Code</h1>
             <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              One time: add MCP → type tendon whoami → browser opens → log in. Then just talk to Claude.
+              One time: add MCP → restart Claude Code → say "start my day" → browser opens → log in. Then just talk to Claude.
             </p>
           </div>
 

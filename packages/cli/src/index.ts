@@ -290,7 +290,7 @@ async function cmdWhoami(): Promise<void> {
   console.log(pc.dim('  If tendon is not added yet:'));
   console.log(pc.cyan(`    claude mcp add --transport http tendon ${mcpUrl}`));
   console.log('');
-  console.log(pc.dim('  Then restart Claude Code, and in chat type: ') + pc.cyan('tendon whoami'));
+  console.log(pc.dim('  Then restart Claude Code and say: ') + pc.cyan('"start my day"'));
   console.log(pc.dim('  → Browser opens for login'));
   console.log('');
 }
