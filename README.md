@@ -125,73 +125,78 @@ tendon/
 
 ## Self-hosting
 
-### Prerequisites
-
-- Node.js ≥ 20
-- PostgreSQL 14+
-- A [Clerk](https://clerk.com) account (free tier works)
-- Domains for API, MCP, and Web (or use localhost for local dev)
-
-### 1. Clone and install
+### Option A — Docker (recommended, no external accounts needed)
 
 ```bash
 git clone https://github.com/Alashed/tendon-mcp.git
 cd tendon-mcp
-npm install
+docker compose up
 ```
 
-### 2. Set up environment variables
+That's it. PostgreSQL, the API, and the MCP server all start automatically.
 
-```bash
-# API
-cp packages/api/.env.example packages/api/.env
-
-# MCP
-cp packages/mcp/.env.example packages/mcp/.env
-
-# Web
-cp packages/web/.env.example packages/web/.env.local
-```
-
-Fill in each `.env` file — see [Environment variables](#environment-variables).
-
-### 3. Set up Clerk
-
-1. Create a project at [clerk.com](https://clerk.com)
-2. Copy **Publishable key** → `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` in `packages/web/.env.local`
-3. Copy **Secret key** → `CLERK_SECRET_KEY` in `packages/api/.env`
-4. In Clerk dashboard → **Redirect URLs** → add:
-   - `http://localhost:3000/login/sso-callback`
-   - `http://localhost:3000/register/sso-callback`
-   - `http://localhost:3000/oauth/authorize`
-
-### 4. Run migrations
-
-```bash
-cd packages/api
-npm run migrate
-```
-
-### 5. Start all services
-
-```bash
-# Terminal 1 — API
-npm run dev:api        # http://localhost:3001
-
-# Terminal 2 — MCP
-npm run dev:mcp        # http://localhost:3002
-
-# Terminal 3 — Web
-npm run dev:web        # http://localhost:3000
-```
-
-### 6. Add to Claude Code
+Then add to Claude Code:
 
 ```bash
 claude mcp add --transport http tendon http://localhost:3002
 ```
 
-Claude will open `http://localhost:3000/oauth/authorize` — log in and click Allow.
+Claude opens `http://localhost:3001/oauth/authorize` — create an account with email/password and click **Allow**. No Clerk, no external services.
+
+To create your first account:
+
+```bash
+curl -X POST http://localhost:3001/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","name":"You","password":"yourpassword"}'
+```
+
+---
+
+### Option B — npm (no Docker)
+
+#### Prerequisites
+
+- Node.js ≥ 20
+- PostgreSQL 14+ running locally
+
+#### Steps
+
+```bash
+git clone https://github.com/Alashed/tendon-mcp.git
+cd tendon-mcp
+npm install
+
+# Copy and fill in env files
+cp packages/api/.env.example packages/api/.env
+cp packages/mcp/.env.example packages/mcp/.env
+# Edit packages/api/.env — set DATABASE_URL and JWT_SECRET at minimum
+
+# Run migrations
+cd packages/api && node -e "import('./dist/scripts/migrate.js')" || npm run build && node dist/scripts/migrate.js
+cd ../..
+
+# Start services
+npm run dev:api   # http://localhost:3001
+npm run dev:mcp   # http://localhost:3002
+```
+
+```bash
+claude mcp add --transport http tendon http://localhost:3002
+```
+
+---
+
+### Option C — with web dashboard (requires Clerk)
+
+If you want the full web dashboard (task list, sessions, team view):
+
+1. Create a project at [clerk.com](https://clerk.com) (free)
+2. Copy keys into env files — see [Environment variables](#environment-variables)
+3. Add redirect URLs in Clerk dashboard:
+   - `http://localhost:3000/login/sso-callback`
+   - `http://localhost:3000/register/sso-callback`
+4. `npm run dev:web` — http://localhost:3000
 
 ---
 

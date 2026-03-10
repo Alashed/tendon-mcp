@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: tendon
+      POSTGRES_USER: tendon
+      POSTGRES_PASSWORD: tendon
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tendon"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      DATABASE_URL: postgresql://tendon:tendon@postgres:5432/tendon
+      JWT_SECRET: ${JWT_SECRET:-change-me-use-openssl-rand-hex-32}
+      # Point consent UI back at the API itself (no Next.js needed)
+      API_BASE_URL: http://localhost:3001
+      WEB_BASE_URL: http://localhost:3001
+      MCP_BASE_URL: http://localhost:3002
+      CORS_ORIGINS: http://localhost:3000
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mcp:
+    build:
+      context: .
+      dockerfile: packages/mcp/Dockerfile
+    environment:
+      PORT: 3002
+      ALASHED_API_URL: http://api:3001
+      MCP_BASE_URL: http://localhost:3002
+    ports:
+      - "3002:3002"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

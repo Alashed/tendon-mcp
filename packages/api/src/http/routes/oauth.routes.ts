@@ -50,8 +50,10 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
-  // ── GET /oauth/authorize — Redirect to web app ───────────────────────────
-  // The actual consent UI lives at tendon.alashed.kz/oauth/authorize (Next.js)
+  // ── GET /oauth/authorize ─────────────────────────────────────────────────
+  // Two modes:
+  //   1. WEB_BASE_URL is set and different from API → redirect to Next.js consent UI (Clerk)
+  //   2. Standalone / self-hosted → serve a built-in HTML consent form (no Clerk needed)
   app.get('/oauth/authorize', async (request, reply) => {
     const params = request.query as Record<string, string>;
     const { oauthService } = getContainer();
@@ -63,9 +65,21 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ error: msg });
     }
 
-    const webUrl = new URL(`${config.webBaseUrl}/oauth/authorize`);
-    Object.entries(params).forEach(([k, v]) => webUrl.searchParams.set(k, v));
-    return reply.redirect(webUrl.toString());
+    const isStandaloneMode =
+      !config.webBaseUrl ||
+      config.webBaseUrl === config.apiBaseUrl ||
+      config.webBaseUrl.includes('localhost:3001');
+
+    if (!isStandaloneMode) {
+      const webUrl = new URL(`${config.webBaseUrl}/oauth/authorize`);
+      Object.entries(params).forEach(([k, v]) => webUrl.searchParams.set(k, v));
+      return reply.redirect(webUrl.toString());
+    }
+
+    // Standalone mode: serve built-in HTML consent page
+    const qs = new URLSearchParams(params).toString();
+    const html = buildConsentHtml(config.apiBaseUrl, qs, params);
+    return reply.header('Content-Type', 'text/html; charset=utf-8').send(html);
   });
 
   // ── POST /oauth/consent — Issue code after Clerk auth ───────────────────
@@ -142,4 +156,184 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
     const result = await oauthService.introspect(token);
     return reply.send(result);
   });
+}
+
+// ── Built-in HTML consent page (standalone / self-hosted mode) ───────────────
+// No Clerk, no React. Plain HTML + Fetch API.
+// Used when WEB_BASE_URL is not set or points to the API itself.
+function buildConsentHtml(apiBase: string, qs: string, params: Record<string, string>): string {
+  void qs;
+  const paramsJson = JSON.stringify(params);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect Claude Code — Tendon</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0c0c10; color: #e4e4e7;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #111115; border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 32px; width: 100%; max-width: 380px;
+    }
+    .icon {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3);
+      display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;
+    }
+    h1 { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 6px; }
+    .sub { font-size: 13px; color: #71717a; text-align: center; margin-bottom: 24px; }
+    .perms {
+      background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.12);
+      border-radius: 10px; padding: 14px; margin-bottom: 20px;
+    }
+    .perms p { font-size: 12px; color: #71717a; margin-bottom: 8px; }
+    .perm { font-size: 12px; display: flex; gap: 8px; margin-bottom: 4px; }
+    .perm span:first-child { color: #3b82f6; }
+    label { display: block; font-size: 12px; color: #71717a; margin-bottom: 5px; }
+    input {
+      width: 100%; padding: 10px 12px; background: #18181f;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+      color: #e4e4e7; font-size: 14px; margin-bottom: 12px; outline: none;
+    }
+    input:focus { border-color: rgba(59,130,246,0.5); }
+    .btn-allow {
+      width: 100%; padding: 11px; background: #e8b84b; color: #0c0c10;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-bottom: 8px;
+    }
+    .btn-allow:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-cancel {
+      width: 100%; padding: 10px; background: none; border: none;
+      color: #52525b; font-size: 13px; cursor: pointer;
+    }
+    .error {
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #fca5a5;
+      margin-bottom: 12px; display: none;
+    }
+    .step { font-size: 12px; color: #52525b; text-align: center; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#3b82f6" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h1>Connect Claude Code</h1>
+    <p class="sub">Sign in to authorize Claude Code access to your Tendon workspace</p>
+
+    <div class="perms">
+      <p>Claude will be able to:</p>
+      <div class="perm"><span>✓</span><span>View and create tasks</span></div>
+      <div class="perm"><span>✓</span><span>Log focus sessions and time</span></div>
+      <div class="perm"><span>✓</span><span>Read your workspace plan</span></div>
+    </div>
+
+    <div id="error" class="error"></div>
+
+    <div id="login-step">
+      <p class="step">Step 1 of 2 — Sign in</p>
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+      <button class="btn-allow" onclick="login()">Sign in →</button>
+      <button class="btn-cancel" onclick="deny()">Cancel</button>
+    </div>
+
+    <div id="allow-step" style="display:none">
+      <p class="step">Step 2 of 2 — Authorize</p>
+      <button class="btn-allow" onclick="allow()">Allow access</button>
+      <button class="btn-cancel" onclick="deny()">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    const API = '${apiBase}';
+    const PARAMS = ${paramsJson};
+    let jwt = null;
+
+    function showError(msg) {
+      const el = document.getElementById('error');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    async function login() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email || !password) { showError('Email and password required'); return; }
+
+      document.querySelector('#login-step .btn-allow').disabled = true;
+      document.getElementById('error').style.display = 'none';
+
+      try {
+        const res = await fetch(API + '/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showError(data.error || 'Invalid credentials'); return; }
+        jwt = data.data.token;
+        document.getElementById('login-step').style.display = 'none';
+        document.getElementById('allow-step').style.display = 'block';
+      } catch {
+        showError('Network error — is the API running?');
+      } finally {
+        document.querySelector('#login-step .btn-allow').disabled = false;
+      }
+    }
+
+    async function allow() {
+      document.querySelector('#allow-step .btn-allow').disabled = true;
+      document.getElementById('error').style.display = 'none';
+
+      try {
+        const res = await fetch(API + '/oauth/consent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
+          body: JSON.stringify(PARAMS),
+        });
+        const data = await res.json();
+        if (res.ok && data.redirect_url) {
+          window.location.href = data.redirect_url;
+        } else {
+          showError(data.error || 'Authorization failed');
+        }
+      } catch {
+        showError('Network error');
+      } finally {
+        document.querySelector('#allow-step .btn-allow').disabled = false;
+      }
+    }
+
+    function deny() {
+      if (PARAMS.redirect_uri) {
+        const url = new URL(PARAMS.redirect_uri);
+        url.searchParams.set('error', 'access_denied');
+        if (PARAMS.state) url.searchParams.set('state', PARAMS.state);
+        window.location.href = url.toString();
+      }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        if (document.getElementById('login-step').style.display !== 'none') login();
+        else allow();
+      }
+    });
+  </script>
+</body>
+</html>`;
 }
