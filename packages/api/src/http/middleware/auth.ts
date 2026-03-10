@@ -10,16 +10,30 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     return void reply.status(401).send({ error: 'Unauthorized' });
   }
 
-  try {
-    const { userRepository, workspaceRepository } = getContainer();
-    const { user, workspaceId } = await verifyAndUpsertClerkUser(
-      token,
-      userRepository,
-      workspaceRepository,
-    );
+  const { userRepository, workspaceRepository, oauthService } = getContainer();
 
-    // Set request.user for downstream route handlers
-    request.user = { sub: user.id, email: user.email, workspace_id: workspaceId };
+  // ── Try Clerk JWT (contains dots) ───────────────────────────────────────
+  if (token.includes('.')) {
+    try {
+      const { user, workspaceId } = await verifyAndUpsertClerkUser(
+        token,
+        userRepository,
+        workspaceRepository,
+      );
+      request.user = { sub: user.id, email: user.email, workspace_id: workspaceId };
+      return;
+    } catch {
+      // fall through to OAuth
+    }
+  }
+
+  // ── Try OAuth access token (opaque hex token from MCP/Claude flow) ──────
+  try {
+    const info = await oauthService.introspect(token);
+    if (!info.active || !info.sub || !info.workspace_id) {
+      return void reply.status(401).send({ error: 'Unauthorized' });
+    }
+    request.user = { sub: info.sub, email: info.email ?? '', workspace_id: info.workspace_id };
   } catch {
     return void reply.status(401).send({ error: 'Unauthorized' });
   }
