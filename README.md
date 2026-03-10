@@ -1,80 +1,38 @@
-# Alashed Tracker
+# Tendon
 
-**Task tracking that lives inside Claude Code.**
+**Task tracking and time logging that lives inside Claude Code.**
 
-Connect your workspace to Claude Code in one command — no config files, no tokens, no tab-switching. Ask Claude to manage your tasks, log time, and plan your day, all from inside your editor.
+Connect your workspace in one command — no config files, no manual token copying. Ask Claude to create tasks, track focus time, run daily standups, and review your week — all from inside your editor.
+
+[![Deploy](https://github.com/Alashed/tendon-mcp/actions/workflows/deploy.yml/badge.svg)](https://github.com/Alashed/tendon-mcp/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
-## Quick start
+## Use the hosted version
 
 ```bash
-claude mcp add --transport http alashed-tracker https://mcp.tracker.alashed.kz
+claude mcp add --transport http tendon https://mcp.tendon.alashed.kz
 ```
 
-1. [Create a free account](https://tracker.alashed.kz/register)
+1. [Create a free account →](https://tendon.alashed.kz/register)
 2. Run the command above in your terminal
-3. Open Claude Code and ask anything
+3. Claude opens a browser — click **Allow**
+4. Ask anything
 
 ---
 
 ## What you can do
 
-Once connected, just talk to Claude:
-
 ```
-"What should I focus on today?"
-"Create a task: fix the auth bug, high priority"
-"Start a focus session on the login refactor"
-"List all in-progress tasks"
-"Mark task #5 as done"
-"Log a blocker: waiting for design review"
-```
-
-Claude has full access to your workspace — tasks, time tracking, priorities, and team members.
-
----
-
-## Architecture
-
-```
-tracker.alashed.kz   →  Next.js web app   (port 3030)
-api.tracker.alashed.kz  →  Fastify API       (port 3001)
-mcp.tracker.alashed.kz  →  MCP Server        (port 3002)
-```
-
-### Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Web   | Next.js 15, React 19, Tailwind CSS |
-| API   | Fastify v5, TypeScript, PostgreSQL |
-| MCP   | `@modelcontextprotocol/sdk` v1.27, StreamableHTTP |
-| Auth  | OAuth 2.1 + PKCE (RFC 7636, 8414, 9728, 7591, 7662) |
-| Infra | AWS EC2 (eu-north-1), RDS PostgreSQL, S3, SSM |
-| Process | PM2, Nginx, Let's Encrypt |
-
-### OAuth flow
-
-```
-Claude Code                 MCP Server                    API
-    │                           │                           │
-    │── GET /.well-known ───────►│                           │
-    │◄─ authorization_servers ──│                           │
-    │                           │                           │
-    │── POST /mcp ──────────────►│                           │
-    │◄─ 401 WWW-Authenticate ───│                           │
-    │                           │                           │
-    │── browser opens login ────────────────────────────────►│
-    │◄─ redirect with code ─────────────────────────────────│
-    │                           │                           │
-    │── POST /oauth/token ──────────────────────────────────►│
-    │◄─ access_token ───────────────────────────────────────│
-    │                           │                           │
-    │── POST /mcp (Bearer) ─────►│                           │
-    │                           │── POST /oauth/introspect ─►│
-    │                           │◄─ { active, workspace_id }│
-    │◄─ MCP response ───────────│                           │
+"Start my day"                          → /morning prompt
+"What did I do yesterday?"              → get_daily_summary
+"Create tasks for today's sprint"       → create_task × N
+"Start a focus session on the auth bug" → start_focus_session
+"Mark the login refactor as done"       → update_task_status
+"I'm blocked — can't reproduce in prod" → log_blocker
+"Wrap up for today"                     → /wrap_up prompt
+"Show me my week"                       → week_summary
 ```
 
 ---
@@ -84,45 +42,67 @@ Claude Code                 MCP Server                    API
 | Tool | Description |
 |------|-------------|
 | `create_task` | Create a task with title, priority, due date |
-| `list_tasks` | List tasks filtered by status or assignee |
-| `update_task_status` | Move a task to planned / in_progress / done |
-| `start_focus_session` | Begin a timed work session on a task |
-| `stop_focus_session` | End the session and log time |
-| `get_today_plan` | Get a prioritized view of today's work |
-| `log_blocker` | Record a blocker against a task |
+| `list_tasks` | List tasks filtered by status |
+| `update_task` | Edit title, description, priority, or due date |
+| `update_task_status` | Move a task to `planned` / `in_progress` / `done` |
+| `archive_task` | Remove a task from your active list |
+| `start_focus_session` | Begin a timed work session, auto-stops the previous |
+| `stop_focus_session` | End the session and log duration |
+| `get_today_plan` | Prioritized view of today: in-progress, planned, time tracked |
+| `get_daily_summary` | Summary for any date — supports `"yesterday"` |
+| `week_summary` | 7-day breakdown: focus time, tasks done, best day |
+| `log_blocker` | Append a blocker note to a task |
+
+## Built-in Prompts (slash-commands)
+
+| Prompt | What it does |
+|--------|-------------|
+| `/morning` | Show today's plan, suggest first task, start focus session |
+| `/wrap_up` | Stop tracking, recap day, suggest tomorrow's top 3 |
+| `/standup` | Generate Yesterday / Today / Blockers in standup format |
+| `/review` | Weekly review with productivity patterns and suggestions |
 
 ---
 
-## API Reference
-
-Base URL: `https://api.tracker.alashed.kz`
-
-### Auth
+## Architecture
 
 ```
-POST /auth/register    { name, email, password }
-POST /auth/login       { email, password }
-GET  /auth/me          → current user + workspaces
+tendon.alashed.kz       →  Next.js web app     (port 3030)
+api.tendon.alashed.kz   →  Fastify API          (port 3001)
+mcp.tendon.alashed.kz   →  MCP Server           (port 3002)
 ```
 
-### Tasks
+### Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Web | Next.js 15, React 19, Tailwind CSS, Clerk |
+| API | Fastify v5, TypeScript, PostgreSQL |
+| MCP | `@modelcontextprotocol/sdk` v1, StreamableHTTP |
+| Auth | Clerk (web) + OAuth 2.1 + PKCE (Claude Code) |
+| Infra | AWS EC2, RDS PostgreSQL, S3, SSM |
+
+### OAuth flow (how Claude Code gets access)
 
 ```
-GET    /tasks?workspace_id=<id>   list tasks
-POST   /tasks                     create task
-PATCH  /tasks/:id                 update task
-DELETE /tasks/:id                 archive task
-```
-
-### OAuth 2.1
-
-```
-GET  /.well-known/oauth-authorization-server   RFC 8414 metadata
-POST /oauth/register                           RFC 7591 dynamic client registration
-GET  /oauth/authorize                          PKCE login page
-POST /oauth/authorize                          process consent
-POST /oauth/token                              exchange code for token
-POST /oauth/introspect                         RFC 7662 token introspection
+Claude Code              MCP Server                 API
+    │                        │                        │
+    ├─ GET /.well-known ─────►│                        │
+    │◄─ authorization_servers─┤                        │
+    │                        │                        │
+    ├─ POST /mcp ────────────►│                        │
+    │◄─ 401 WWW-Authenticate ─┤                        │
+    │                        │                        │
+    ├─ browser: /oauth/authorize ───────────────────►  │
+    │◄─ redirect with code ───────────────────────── │
+    │                        │                        │
+    ├─ POST /oauth/token ──────────────────────────►  │
+    │◄─ access_token ─────────────────────────────── │
+    │                        │                        │
+    ├─ POST /mcp (Bearer) ───►│                        │
+    │                        ├─ POST /oauth/introspect►│
+    │                        │◄─ { user_id, workspace }│
+    │◄─ tool result ──────────┤                        │
 ```
 
 ---
@@ -130,109 +110,252 @@ POST /oauth/introspect                         RFC 7662 token introspection
 ## Monorepo structure
 
 ```
-alashed-tracker/
+tendon/
 ├── packages/
-│   ├── api/         Fastify REST API + OAuth server
-│   ├── mcp/         MCP server (OAuth protected resource)
-│   ├── web/         Next.js web app
-│   └── shared/      TypeScript types (no runtime)
-├── migrations/      PostgreSQL migrations
-├── infra/           Nginx configs
-└── scripts/         Deploy scripts
+│   ├── api/        Fastify REST API + OAuth 2.1 server
+│   ├── mcp/        MCP server (OAuth-protected resource)
+│   ├── web/        Next.js dashboard + OAuth consent UI
+│   └── shared/     TypeScript types (no runtime)
+├── .github/
+│   └── workflows/  CI/CD — deploys API, MCP, Web on push to main
+└── infra/          Nginx configs
 ```
 
 ---
 
-## Deploy
+## Self-hosting
 
 ### Prerequisites
 
-- AWS CLI configured
-- EC2 instance with PM2, Nginx, Certbot
-- RDS PostgreSQL database
-- S3 bucket for deployment artifacts
+- Node.js ≥ 20
+- PostgreSQL 14+
+- A [Clerk](https://clerk.com) account (free tier works)
+- Domains for API, MCP, and Web (or use localhost for local dev)
 
-### Deploy web
-
-```bash
-./scripts/deploy-web.sh
-```
-
-### Deploy API / MCP
+### 1. Clone and install
 
 ```bash
-# Build
-npm run build:api
-npm run build:mcp
-
-# Package and upload (same pattern as web)
-tar -czf /tmp/api.tar.gz -C packages/api dist package.json
-aws s3 cp /tmp/api.tar.gz s3://<bucket>/deployments/api.tar.gz
-```
-
----
-
-## Local development
-
-```bash
-# Install
+git clone https://github.com/Alashed/tendon-mcp.git
+cd tendon-mcp
 npm install
-
-# Run API
-npm run dev:api      # http://localhost:3001
-
-# Run MCP
-npm run dev:mcp      # http://localhost:3002
-
-# Run web
-npm run dev:web      # http://localhost:3000
-
-# Run migrations
-cd packages/api && npm run migrate
 ```
+
+### 2. Set up environment variables
+
+```bash
+# API
+cp packages/api/.env.example packages/api/.env
+
+# MCP
+cp packages/mcp/.env.example packages/mcp/.env
+
+# Web
+cp packages/web/.env.example packages/web/.env.local
+```
+
+Fill in each `.env` file — see [Environment variables](#environment-variables).
+
+### 3. Set up Clerk
+
+1. Create a project at [clerk.com](https://clerk.com)
+2. Copy **Publishable key** → `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` in `packages/web/.env.local`
+3. Copy **Secret key** → `CLERK_SECRET_KEY` in `packages/api/.env`
+4. In Clerk dashboard → **Redirect URLs** → add:
+   - `http://localhost:3000/login/sso-callback`
+   - `http://localhost:3000/register/sso-callback`
+   - `http://localhost:3000/oauth/authorize`
+
+### 4. Run migrations
+
+```bash
+cd packages/api
+npm run migrate
+```
+
+### 5. Start all services
+
+```bash
+# Terminal 1 — API
+npm run dev:api        # http://localhost:3001
+
+# Terminal 2 — MCP
+npm run dev:mcp        # http://localhost:3002
+
+# Terminal 3 — Web
+npm run dev:web        # http://localhost:3000
+```
+
+### 6. Add to Claude Code
+
+```bash
+claude mcp add --transport http tendon http://localhost:3002
+```
+
+Claude will open `http://localhost:3000/oauth/authorize` — log in and click Allow.
 
 ---
 
 ## Environment variables
 
-### API (packages/api/.env)
+### `packages/api/.env`
 
-```
+```env
 PORT=3001
-DATABASE_URL=postgresql://user:pass@host:5432/dbname
-DB_SSL=true
-JWT_SECRET=<secret>
-API_BASE_URL=https://api.tracker.alashed.kz
-MCP_BASE_URL=https://mcp.tracker.alashed.kz
-CORS_ORIGINS=https://tracker.alashed.kz
+NODE_ENV=development
+
+# Database — use one or the other
+DATABASE_URL=postgresql://user:pass@localhost:5432/tendon
+# or individual vars:
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=tendon
+# DB_USER=postgres
+# DB_PASSWORD=postgres
+# DB_SSL=false
+
+JWT_SECRET=your-random-secret-min-32-chars
+
+# Clerk
+CLERK_SECRET_KEY=sk_test_...
+
+# Service URLs (must match where each service is running)
+API_BASE_URL=http://localhost:3001
+WEB_BASE_URL=http://localhost:3000
+MCP_BASE_URL=http://localhost:3002
+CORS_ORIGINS=http://localhost:3000
+
+# Optional
+TELEGRAM_BOT_TOKEN=
 ```
 
-### MCP (packages/mcp/.env)
+### `packages/mcp/.env`
 
-```
+```env
 PORT=3002
-ALASHED_API_URL=https://api.tracker.alashed.kz
-MCP_BASE_URL=https://mcp.tracker.alashed.kz
+ALASHED_API_URL=http://localhost:3001
+MCP_BASE_URL=http://localhost:3002
 ```
 
-### Web (packages/web/.env.local)
+### `packages/web/.env.local`
 
-```
-NEXT_PUBLIC_API_URL=https://api.tracker.alashed.kz
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+
+# Clerk
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/login
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/register
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
 ```
 
 ---
 
-## Add to Claude Code
+## API Reference
 
-```bash
-claude mcp add --transport http alashed-tracker https://mcp.tracker.alashed.kz
+Base URL: `https://api.tendon.alashed.kz` (or your local `http://localhost:3001`)
+
+All endpoints except `/auth/*`, `GET /invites/:code`, and `/oauth/*` require:
+```
+Authorization: Bearer <token>
+```
+Accepts both **Clerk JWT** (from the web app) and **OAuth access token** (from Claude Code).
+
+### Auth
+
+```
+POST /auth/register    { name, email, password }
+POST /auth/login       { email, password }
+GET  /auth/me          → current user + workspaces (with role)
 ```
 
-This uses OAuth 2.1 + PKCE — Claude Code will open a browser for you to sign in. No manual token copying required.
+### Tasks
+
+```
+GET    /tasks?workspace_id=&status=&assignee_id=
+POST   /tasks          { workspace_id, title, priority?, due_date?, source? }
+GET    /tasks/:id
+PATCH  /tasks/:id      { status?, title?, description?, priority?, due_date? }
+DELETE /tasks/:id      → archives the task (204)
+```
+
+### Activities (Focus Sessions)
+
+```
+POST /activities/start   { workspace_id, task_id?, source? }
+POST /activities/stop    { workspace_id, activity_id? }
+GET  /activities?workspace_id=&date=YYYY-MM-DD&user_id=
+POST /sync               batch sync for offline agents
+```
+
+### Reports
+
+```
+GET /reports/daily?workspace_id=&date=YYYY-MM-DD&user_id=
+  → { date, workspace_id, users: [{ user_name, focus_minutes, tasks_done_today, ... }], totals }
+```
+
+### Workspaces
+
+```
+GET  /workspaces
+POST /workspaces         { name, type: "personal"|"team" }
+GET  /workspaces/:id
+POST /workspaces/:id/members   { user_id, role }
+POST /workspaces/:id/invites   { email?, role? }  → invite link
+GET  /invites/:code
+POST /invites/:code/accept
+```
+
+### Telegram
+
+```
+POST /telegram/webhook          Telegram Bot webhook
+GET  /telegram/link?code=       verify link code
+POST /telegram/link/confirm     { code, workspace_id }
+```
+
+### OAuth 2.1
+
+```
+GET  /.well-known/oauth-authorization-server   RFC 8414 metadata
+POST /oauth/register                           RFC 7591 dynamic client registration
+GET  /oauth/authorize                          redirects to web consent page
+POST /oauth/consent                            { ...params, workspace_id }
+POST /oauth/token                              { grant_type, code, code_verifier, ... }
+POST /oauth/introspect                         { token }
+```
+
+---
+
+## Telegram Bot (optional)
+
+1. Create a bot via [@BotFather](https://t.me/BotFather), copy the token
+2. Add `TELEGRAM_BOT_TOKEN=...` to `packages/api/.env`
+3. The API registers the webhook automatically on startup
+4. In Telegram, send `/connect` to the bot to link a chat to your workspace
+5. The bot sends daily reports at the hour set in `telegram_chats.report_hour` (UTC)
+
+Bot commands:
+- `/connect` — link this chat to a workspace
+- `/today` — show today's summary
+- `/help` — list commands
+
+---
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Good first issues:**
+- [ ] Timezone-aware nightly reports (use `workspace.timezone` for cron)
+- [ ] `/dashboard/tasks` and `/dashboard/sessions` workspace switcher
+- [ ] Local agent (`packages/agent`) for terminal history tracking
+- [ ] Docker Compose for one-command local setup
+- [ ] Week-over-week trend in `week_summary`
 
 ---
 
 ## License
 
-MIT
+[MIT](LICENSE)

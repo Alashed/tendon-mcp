@@ -1,5 +1,33 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
+.next/
+out/
+
+# Environment variables — never commit these
 .env
+.env.local
+.env.*.local
 *.env.local
+
+# Logs
 *.log
+logs/
+npm-debug.log*
+
+# Deployment artifacts
+*.tar.gz
+*.tgz
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# TypeScript
+*.tsbuildinfo
