@@ -249,7 +249,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const load = async () => {
       const token = await getToken();
-      if (!token) return;
+      if (!token) { setLoading(false); return; }
       try {
         const [meRes, claudeRes] = await Promise.all([
           fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -261,12 +261,17 @@ export default function DashboardPage() {
           setWorkspaces(list);
           const personal = list.find((w) => w.type === 'personal') ?? list[0];
           if (personal) setWorkspaceId(personal.id);
+          else setLoading(false); // no workspace → stop skeleton
+        } else {
+          setLoading(false); // API error → stop skeleton
         }
         if (claudeRes.ok) {
           const { data } = await claudeRes.json();
           setClaudeConnected(data.connected);
         }
-      } catch { /* ignore */ }
+      } catch {
+        setLoading(false); // network error (SSL, offline) → stop skeleton
+      }
     };
     load();
   }, [getToken]);

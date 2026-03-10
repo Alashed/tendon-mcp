@@ -37,20 +37,20 @@ export default function SessionsPage() {
 
   const fetchBase = useCallback(async () => {
     const token = await getToken();
-    if (!token) return null;
+    if (!token) { setLoading(false); return null; }
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) return null;
+      if (!res.ok) { setLoading(false); return null; }
       const { data } = await res.json();
       const ws = data.workspaces?.find((w: { type: string }) => w.type === 'personal') ?? data.workspaces?.[0];
-      if (!ws) return null;
+      if (!ws) { setLoading(false); return null; }
       setWorkspaceId(ws.id);
       const list = await getTasks(ws.id, token);
       setTasks(list);
       return { ws, token };
-    } catch { return null; }
+    } catch { setLoading(false); return null; }
   }, [getToken]);
 
   const fetchActivities = useCallback(async (wsId: string, token: string, date: string) => {

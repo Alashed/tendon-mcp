@@ -45,15 +45,15 @@ export default function TasksPage() {
 
   const fetchData = useCallback(async () => {
     const token = await getToken();
-    if (!token) return;
+    if (!token) { setLoading(false); return; }
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) return;
+      if (!res.ok) { setLoading(false); return; }
       const { data } = await res.json();
       const ws = data.workspaces?.find((w: { type: string }) => w.type === 'personal') ?? data.workspaces?.[0];
-      if (!ws) return;
+      if (!ws) { setLoading(false); return; }
       setWorkspaceId(ws.id);
       const list = await getTasks(ws.id, token);
       setTasks(list);

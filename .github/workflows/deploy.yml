@@ -92,6 +92,62 @@ jobs:
           echo "Timed out waiting for SSM command"
           exit 1
 
+  deploy-nginx:
+    name: Deploy Nginx configs
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION }}
+
+      - name: Upload nginx configs to S3
+        run: |
+          aws s3 cp infra/nginx-api.conf s3://${{ env.S3_BUCKET }}/nginx/nginx-api.conf
+          aws s3 cp infra/nginx-mcp.conf s3://${{ env.S3_BUCKET }}/nginx/nginx-mcp.conf
+          aws s3 cp infra/nginx-tendon.conf s3://${{ env.S3_BUCKET }}/nginx/nginx-tendon.conf
+
+      - name: Apply nginx configs via SSM
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --region ${{ env.REGION }} \
+            --instance-ids ${{ env.INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[
+              'set -e',
+              'aws s3 cp s3://${{ env.S3_BUCKET }}/nginx/nginx-api.conf /etc/nginx/conf.d/api.tendon.alashed.kz.conf --region ${{ env.REGION }}',
+              'aws s3 cp s3://${{ env.S3_BUCKET }}/nginx/nginx-mcp.conf /etc/nginx/conf.d/mcp.tendon.alashed.kz.conf --region ${{ env.REGION }}',
+              'aws s3 cp s3://${{ env.S3_BUCKET }}/nginx/nginx-tendon.conf /etc/nginx/conf.d/tendon.alashed.kz.conf --region ${{ env.REGION }}',
+              'nginx -t && systemctl reload nginx',
+              'echo DONE'
+            ]" \
+            --output text \
+            --query "Command.CommandId")
+
+          for i in $(seq 1 10); do
+            STATUS=$(aws ssm get-command-invocation \
+              --region ${{ env.REGION }} \
+              --instance-id ${{ env.INSTANCE_ID }} \
+              --command-id $COMMAND_ID \
+              --query "Status" --output text 2>/dev/null || echo "Pending")
+            echo "[$i] Status: $STATUS"
+            if [ "$STATUS" = "Success" ]; then exit 0; fi
+            if [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+              aws ssm get-command-invocation \
+                --region ${{ env.REGION }} \
+                --instance-id ${{ env.INSTANCE_ID }} \
+                --command-id $COMMAND_ID \
+                --query "StandardErrorContent" --output text
+              exit 1
+            fi
+            sleep 6
+          done
+
   deploy-mcp:
     name: Deploy MCP
     runs-on: ubuntu-latest
