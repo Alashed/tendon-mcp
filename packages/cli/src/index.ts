@@ -241,9 +241,63 @@ function printSuccess(email: string): void {
   );
 }
 
+// ── whoami subcommand (no TTY required) ───────────────────────────────────────
+
+const HOSTED_API = 'https://api.tendon.alashed.kz';
+const HOSTED_MCP = 'https://mcp.tendon.alashed.kz';
+
+async function cmdWhoami(): Promise<void> {
+  console.log('');
+  console.log(pc.cyan('  Tendon connection check'));
+  console.log('');
+
+  let localOk = false;
+  try {
+    const r = await fetch(`${API_URL}/health`);
+    localOk = r.ok;
+  } catch { /* ignore */ }
+
+  let hostedOk = false;
+  let hostedHealth: { clerkConfigured?: boolean } | null = null;
+  try {
+    const r = await fetch(`${HOSTED_API}/health`);
+    hostedOk = r.ok;
+    if (r.ok) hostedHealth = (await r.json()) as { clerkConfigured?: boolean };
+  } catch { /* ignore */ }
+
+  if (localOk) {
+    console.log(pc.green('  ✓ Local API running') + pc.dim(` (${API_URL})`));
+    console.log(pc.dim('    MCP: ') + pc.cyan(`claude mcp add --transport http tendon ${MCP_URL}`));
+  } else if (hostedOk) {
+    console.log(pc.green('  ✓ Hosted API reachable') + pc.dim(` (${HOSTED_API})`));
+    if (hostedHealth?.clerkConfigured === false) {
+      console.log(pc.yellow('  ⚠ API: Clerk not configured (contact support)'));
+    }
+    console.log(pc.dim('    MCP: ') + pc.cyan(`claude mcp add --transport http tendon ${HOSTED_MCP}`));
+  } else {
+    console.log(pc.red('  ✗ No Tendon API reachable'));
+    console.log(pc.dim('    Local: ') + API_URL);
+    console.log(pc.dim('    Hosted: ') + HOSTED_API);
+    console.log('');
+    console.log(pc.dim('  Run ') + pc.cyan('npx tendon-cli') + pc.dim(' to set up locally, or use the hosted version.'));
+    process.exit(1);
+  }
+
+  console.log('');
+  console.log(pc.dim('  To verify YOUR auth and workspace, open Claude Code and type:'));
+  console.log(pc.cyan('    tendon whoami'));
+  console.log('');
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
+  const sub = process.argv[2];
+  if (sub === 'whoami') {
+    await cmdWhoami();
+    return;
+  }
+
   banner();
   intro(pc.bold('Tendon setup'));
 

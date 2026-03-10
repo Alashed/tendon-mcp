@@ -62,12 +62,15 @@ The wizard prints the command to connect Claude Code:
 claude mcp add --transport http tendon http://localhost:3002
 ```
 
-Run it, then open **Claude Code** and in the chat type:
-
-```
+**In terminal** — check API connectivity (no auth):
+```bash
 tendon whoami
 ```
 
+**In Claude Code chat** — verify your auth & workspace:
+```
+tendon whoami
+```
 A browser will open automatically → click **Allow** → connection confirmed.
 
 ---

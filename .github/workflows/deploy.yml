@@ -53,6 +53,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters "commands=[
               'set -e',
+              'mkdir -p /home/ubuntu/alashed-tracker',
               'cd /home/ubuntu/alashed-tracker',
               'aws s3 cp s3://${{ env.S3_BUCKET }}/deployments/api.tar.gz api.tar.gz --region ${{ env.REGION }}',
               'rm -rf dist migrations ecosystem.config.cjs',
@@ -62,7 +63,8 @@ jobs:
               'node dist/scripts/migrate.js',
               'pm2 delete tendon-api 2>/dev/null || true',
               'pm2 delete alashed-tendon-api 2>/dev/null || true',
-              'CORS_ORIGINS=https://tendon.alashed.kz,https://www.tendon.alashed.kz TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }} CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} API_BASE_URL=https://api.tendon.alashed.kz pm2 start /home/ubuntu/alashed-tracker/ecosystem.config.cjs',
+              'pm2 delete alashed-tracker-api 2>/dev/null || true',
+              'cd /home/ubuntu/alashed-tracker && CORS_ORIGINS=https://tendon.alashed.kz,https://www.tendon.alashed.kz TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }} CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }} API_BASE_URL=https://api.tendon.alashed.kz pm2 start ecosystem.config.cjs',
               'pm2 save',
               'echo DONE'
             ]" \
