@@ -167,11 +167,10 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
           user_name: string;
           focus_minutes: number;
           session_count: number;
-          tasks_done: number;
-          tasks_in_progress: number;
-          tasks_planned: number;
+          tasks_done_today: Array<{ id: string; title: string; priority: string }>;
+          tasks_in_progress: Array<{ id: string; title: string; priority: string }>;
+          tasks_planned: Array<{ id: string; title: string; priority: string }>;
         }>;
-        tasks: { total: number; done_today: number; in_progress: number };
       }>(`/reports/daily?workspace_id=${workspaceId}&date=${resolvedDate}`);
 
       const me = report.users[0];
@@ -187,10 +186,20 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
         `📅 Summary for ${resolvedDate}`,
         '',
         `⏱ Focus time: ${timeStr} across ${me.session_count} session(s)`,
-        `✅ Tasks completed: ${me.tasks_done}`,
-        `🔥 In progress: ${me.tasks_in_progress}`,
-        `📋 Planned: ${me.tasks_planned}`,
       ];
+
+      if (me.tasks_done_today.length > 0) {
+        lines.push('', `✅ Completed today (${me.tasks_done_today.length}):`);
+        me.tasks_done_today.forEach(t => lines.push(`  • ${t.title} [${t.priority}]`));
+      }
+      if (me.tasks_in_progress.length > 0) {
+        lines.push('', `🔥 In progress (${me.tasks_in_progress.length}):`);
+        me.tasks_in_progress.forEach(t => lines.push(`  • ${t.title} [${t.priority}] — ID: ${t.id}`));
+      }
+      if (me.tasks_planned.length > 0) {
+        lines.push('', `📋 Still planned (${me.tasks_planned.length}):`);
+        me.tasks_planned.slice(0, 5).forEach(t => lines.push(`  • ${t.title}`));
+      }
 
       return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
     },
