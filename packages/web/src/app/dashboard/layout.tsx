@@ -8,6 +8,7 @@ const NAV = [
   {
     href: '/dashboard',
     label: 'Overview',
+    exact: true,
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
         <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.75"/>
@@ -20,6 +21,7 @@ const NAV = [
   {
     href: '/dashboard/tasks',
     label: 'Tasks',
+    exact: false,
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
         <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
@@ -30,10 +32,23 @@ const NAV = [
   {
     href: '/dashboard/sessions',
     label: 'Sessions',
+    exact: false,
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75"/>
         <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/dashboard/team',
+    label: 'Team',
+    exact: false,
+    icon: (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+        <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.75"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
       </svg>
     ),
   },
@@ -59,8 +74,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {NAV.map(({ href, label, icon }) => {
-            const active = pathname === href;
+          {NAV.map(({ href, label, icon, exact }) => {
+            const active = exact ? pathname === href : pathname.startsWith(href);
             return (
               <Link
                 key={href}
