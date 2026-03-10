@@ -51,10 +51,11 @@ app.post('/mcp', async (req, res) => {
   }
 
   const workspaceId = (req.headers['x-workspace-id'] as string) ?? tokenInfo.workspace_id;
+  const userId = tokenInfo.sub;
   const api = new ApiClient(API_URL, token);
 
   const server = new McpServer({ name: 'tendon', version: '1.0.0' });
-  registerTools(server, api, workspaceId);
+  registerTools(server, api, workspaceId, userId);
 
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 

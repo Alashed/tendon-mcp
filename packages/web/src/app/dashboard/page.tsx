@@ -9,6 +9,8 @@ import {
   type Task, type Activity,
 } from '@/lib/api';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
+
 const STATUS_DOT: Record<Task['status'], string> = {
   planned: '#52525B',
   in_progress: '#3B82F6',
@@ -21,6 +23,13 @@ const PRIORITY_BADGE: Record<NonNullable<Task['priority']>, { bg: string; color:
   medium: { bg: 'rgba(59,130,246,0.12)', color: '#93C5FD' },
   low: { bg: 'rgba(82,82,91,0.4)', color: '#71717A' },
 };
+
+interface Workspace {
+  id: string;
+  name: string;
+  type: 'personal' | 'team';
+  role?: string;
+}
 
 type Filter = 'active' | 'done' | 'all';
 
@@ -50,20 +59,179 @@ function totalSeconds(activities: Activity[], ongoingStart?: string): number {
   return Math.floor(completed + ongoing);
 }
 
+// ── Invite Modal ─────────────────────────────────────────────────────────────
+
+function InviteModal({
+  workspaceId,
+  onClose,
+}: {
+  workspaceId: string;
+  onClose: () => void;
+}) {
+  const { getToken } = useAuth();
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<'member' | 'admin'>('member');
+  const [inviteUrl, setInviteUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
+
+  const create = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_URL}/workspaces/${workspaceId}/invites`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ email: email.trim() || undefined, role }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        setError(err.error ?? 'Failed to create invite');
+        return;
+      }
+      const { data } = await res.json();
+      setInviteUrl(data.invite_url);
+    } catch {
+      setError('Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="card p-6 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-display font-bold text-base">Invite teammate</h2>
+          <button
+            onClick={onClose}
+            className="text-xs px-2 py-1 rounded"
+            style={{ color: 'var(--muted)' }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {!inviteUrl ? (
+          <form onSubmit={create} className="space-y-3">
+            <div>
+              <label className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>
+                Email (optional)
+              </label>
+              <input
+                type="email"
+                className="input w-full"
+                placeholder="colleague@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs mb-1.5 block" style={{ color: 'var(--muted)' }}>
+                Role
+              </label>
+              <div className="flex gap-2">
+                {(['member', 'admin'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRole(r)}
+                    className="flex-1 py-2 rounded-lg text-xs border transition-all"
+                    style={{
+                      borderColor: role === r ? 'rgba(59,130,246,0.5)' : 'var(--border)',
+                      background: role === r ? 'rgba(59,130,246,0.08)' : 'transparent',
+                      color: role === r ? 'var(--accent)' : 'var(--muted)',
+                    }}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {error && (
+              <p className="text-xs" style={{ color: '#FCA5A5' }}>{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="amber-btn w-full py-2.5 rounded-lg text-sm mt-1"
+            >
+              {loading ? 'Creating…' : 'Create invite link'}
+            </button>
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <div
+              className="p-3 rounded-lg text-xs font-mono break-all leading-relaxed"
+              style={{ background: 'var(--surface-2)', color: 'var(--accent-light)' }}
+            >
+              {inviteUrl}
+            </div>
+            <p className="text-xs" style={{ color: 'var(--muted)' }}>
+              Link expires in 7 days. Share it with your teammate.
+            </p>
+            <button
+              onClick={copy}
+              className="w-full py-2.5 rounded-lg text-sm border transition-all"
+              style={{
+                borderColor: copied ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.15)',
+                color: copied ? 'var(--accent)' : 'var(--muted)',
+                background: copied ? 'rgba(59,130,246,0.06)' : 'transparent',
+              }}
+            >
+              {copied ? '✓ Copied!' : 'Copy link'}
+            </button>
+            <button
+              onClick={onClose}
+              className="w-full py-2 text-xs"
+              style={{ color: 'var(--subtle)' }}
+            >
+              Done
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const { user } = useUser();
   const { getToken } = useAuth();
 
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [workspaceId, setWorkspaceId] = useState('');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activeSession, setActiveSession] = useState<Activity | null>(null);
-  const [workspaceId, setWorkspaceId] = useState('');
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('active');
   const [newTitle, setNewTitle] = useState('');
   const [creating, setCreating] = useState(false);
   const [focusLoading, setFocusLoading] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [showInvite, setShowInvite] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Live timer tick
@@ -76,35 +244,56 @@ export default function DashboardPage() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [activeSession]);
 
-  const fetchData = useCallback(async () => {
-    const token = await getToken();
-    if (!token) return;
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const { data } = await res.json();
-      const personal = data.workspaces?.find((w: { type: string }) => w.type === 'personal') ?? data.workspaces?.[0];
-      if (!personal) return;
+  // Load workspaces once
+  useEffect(() => {
+    const load = async () => {
+      const token = await getToken();
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const { data } = await res.json();
+        const list: Workspace[] = data.workspaces ?? [];
+        setWorkspaces(list);
+        const personal = list.find((w) => w.type === 'personal') ?? list[0];
+        if (personal) setWorkspaceId(personal.id);
+      } catch { /* ignore */ }
+    };
+    load();
+  }, [getToken]);
 
-      setWorkspaceId(personal.id);
+  const fetchWorkspaceData = useCallback(async (wsId: string) => {
+    const token = await getToken();
+    if (!token || !wsId) return;
+    setLoading(true);
+    try {
       const [list, acts] = await Promise.all([
-        getTasks(personal.id, token),
-        getActivities(personal.id, token),
+        getTasks(wsId, token),
+        getActivities(wsId, token),
       ]);
       setTasks(list);
       setActivities(acts);
       const ongoing = acts.find((a) => !a.end_time) ?? null;
       setActiveSession(ongoing);
-    } catch {
-      // ignore
-    } finally {
+    } catch { /* ignore */ } finally {
       setLoading(false);
     }
   }, [getToken]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    if (workspaceId) fetchWorkspaceData(workspaceId);
+  }, [workspaceId, fetchWorkspaceData]);
+
+  const switchWorkspace = (id: string) => {
+    if (id === workspaceId) return;
+    setTasks([]);
+    setActivities([]);
+    setActiveSession(null);
+    setFilter('active');
+    setWorkspaceId(id);
+  };
 
   const addTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,17 +367,91 @@ export default function DashboardPage() {
   )[0];
 
   const displayName = user?.firstName || user?.emailAddresses[0]?.emailAddress?.split('@')[0] || 'there';
-
   const sessionSeconds = activeSession
     ? Math.floor((Date.now() - new Date(activeSession.start_time).getTime()) / 1000)
     : 0;
-  void tick; // used to trigger re-render
+  void tick;
+
+  const currentWorkspace = workspaces.find((w) => w.id === workspaceId);
+  const isTeam = currentWorkspace?.type === 'team';
+  const canInvite = isTeam && (currentWorkspace?.role === 'owner' || currentWorkspace?.role === 'admin');
 
   return (
     <div style={{ background: 'var(--bg)' }}>
+      {showInvite && (
+        <InviteModal workspaceId={workspaceId} onClose={() => setShowInvite(false)} />
+      )}
+
       <div className="max-w-3xl mx-auto px-8 py-8">
 
-        {/* ── Greeting + meta ───────────────── */}
+        {/* ── Workspace switcher ────────────────── */}
+        {workspaces.length > 1 && (
+          <div className="flex items-center gap-2 mb-6">
+            <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'var(--surface)' }}>
+              {workspaces.map((ws) => (
+                <button
+                  key={ws.id}
+                  onClick={() => switchWorkspace(ws.id)}
+                  className="px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5"
+                  style={{
+                    background: workspaceId === ws.id ? 'var(--surface-2)' : 'transparent',
+                    color: workspaceId === ws.id ? 'var(--text)' : 'var(--muted)',
+                  }}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full"
+                    style={{ background: workspaceId === ws.id ? 'var(--accent)' : 'var(--subtle)' }}
+                  />
+                  {ws.name}
+                </button>
+              ))}
+            </div>
+
+            {isTeam && (
+              <Link
+                href="/dashboard/team"
+                className="text-xs px-3 py-1.5 rounded-lg border transition-all"
+                style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}
+              >
+                Team view →
+              </Link>
+            )}
+
+            {canInvite && (
+              <button
+                onClick={() => setShowInvite(true)}
+                className="text-xs px-3 py-1.5 rounded-lg border transition-all ml-auto"
+                style={{ borderColor: 'rgba(59,130,246,0.3)', color: 'var(--accent)', background: 'rgba(59,130,246,0.05)' }}
+              >
+                + Invite
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* When only one workspace but it's a team — still show Invite and Team view */}
+        {workspaces.length === 1 && isTeam && (
+          <div className="flex items-center gap-2 mb-6 justify-end">
+            <Link
+              href="/dashboard/team"
+              className="text-xs px-3 py-1.5 rounded-lg border transition-all"
+              style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}
+            >
+              Team view →
+            </Link>
+            {canInvite && (
+              <button
+                onClick={() => setShowInvite(true)}
+                className="text-xs px-3 py-1.5 rounded-lg border transition-all"
+                style={{ borderColor: 'rgba(59,130,246,0.3)', color: 'var(--accent)', background: 'rgba(59,130,246,0.05)' }}
+              >
+                + Invite
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Greeting + meta ───────────────────── */}
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold mb-1">Good work, {displayName}.</h1>
           <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--muted)' }}>
@@ -207,7 +470,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Today's Focus ─────────────────── */}
+        {/* ── Today's Focus ─────────────────────── */}
         <div
           className="card px-4 py-4 mb-6 flex items-center gap-4"
           style={{
@@ -261,7 +524,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* ── Stats ─────────────────────────── */}
+        {/* ── Stats ─────────────────────────────── */}
         <div className="grid grid-cols-4 gap-3 mb-6">
           {[
             { label: 'Total', value: counts.total },
@@ -281,7 +544,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* ── Connect Claude / Claude tip ───── */}
+        {/* ── Connect Claude / Claude tip ───────── */}
         {!loading && tasks.length === 0 ? (
           <div
             className="rounded-xl p-5 mb-6 flex items-start gap-4"
@@ -320,7 +583,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Add task ──────────────────────── */}
+        {/* ── Add task ──────────────────────────── */}
         <form onSubmit={addTask} className="flex gap-2 mb-5">
           <input
             type="text"
@@ -338,7 +601,7 @@ export default function DashboardPage() {
           </button>
         </form>
 
-        {/* ── Filter tabs ───────────────────── */}
+        {/* ── Filter tabs ───────────────────────── */}
         <div className="flex gap-1 mb-4 p-1 rounded-lg w-fit" style={{ background: 'var(--surface)' }}>
           {(['active', 'done', 'all'] as Filter[]).map((val) => (
             <button
@@ -355,7 +618,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* ── Task list ─────────────────────── */}
+        {/* ── Task list ─────────────────────────── */}
         {loading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
@@ -406,7 +669,6 @@ export default function DashboardPage() {
                     </span>
                   )}
 
-                  {/* Focus button */}
                   {task.status !== 'done' && task.status !== 'archived' && (
                     <button
                       onClick={() => isActive ? handleStopFocus() : handleStartFocus(task.id)}
@@ -426,7 +688,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ── Today's log ───────────────────── */}
+        {/* ── Today's log ───────────────────────── */}
         {activities.length > 0 && (
           <div className="mt-8">
             <p className="text-xs font-medium mb-3 uppercase tracking-wide" style={{ color: 'var(--subtle)' }}>

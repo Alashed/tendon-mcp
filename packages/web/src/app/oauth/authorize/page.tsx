@@ -1,15 +1,26 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
+
+interface Workspace {
+  id: string;
+  name: string;
+  type: 'personal' | 'team';
+}
 
 function OAuthConsent() {
   const { getToken } = useAuth();
   const { user } = useUser();
   const searchParams = useSearchParams();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
 
   const params = {
     response_type: searchParams.get('response_type') ?? 'code',
@@ -21,18 +32,37 @@ function OAuthConsent() {
     scope: searchParams.get('scope') ?? '',
   };
 
+  useEffect(() => {
+    const load = async () => {
+      const token = await getToken();
+      if (!token) return;
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const { data } = await res.json();
+        const list: Workspace[] = data.workspaces ?? [];
+        setWorkspaces(list);
+        const personal = list.find((w) => w.type === 'personal') ?? list[0];
+        if (personal) setSelectedWorkspaceId(personal.id);
+      } catch { /* ignore */ }
+    };
+    load();
+  }, [getToken]);
+
   const allow = async () => {
     setLoading(true);
     setError('');
     try {
       const token = await getToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/oauth/consent`, {
+      const res = await fetch(`${API_URL}/oauth/consent`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(params),
+        body: JSON.stringify({ ...params, workspace_id: selectedWorkspaceId }),
       });
 
       if (res.ok) {
@@ -57,6 +87,8 @@ function OAuthConsent() {
       window.location.href = url.toString();
     }
   };
+
+  const selectedWs = workspaces.find((w) => w.id === selectedWorkspaceId);
 
   return (
     <div
@@ -105,13 +137,60 @@ function OAuthConsent() {
           </span>
         </p>
 
+        {/* Workspace selector */}
+        {workspaces.length > 1 && (
+          <div className="mb-5">
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--muted)' }}>
+              Connect to workspace:
+            </p>
+            <div className="space-y-1.5">
+              {workspaces.map((ws) => (
+                <button
+                  key={ws.id}
+                  onClick={() => setSelectedWorkspaceId(ws.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-all text-sm"
+                  style={{
+                    borderColor:
+                      selectedWorkspaceId === ws.id
+                        ? 'rgba(59,130,246,0.5)'
+                        : 'var(--border)',
+                    background:
+                      selectedWorkspaceId === ws.id
+                        ? 'rgba(59,130,246,0.06)'
+                        : 'transparent',
+                    color: 'var(--text)',
+                  }}
+                >
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{
+                      background:
+                        selectedWorkspaceId === ws.id ? '#3B82F6' : 'var(--subtle)',
+                    }}
+                  />
+                  <span className="flex-1 truncate">{ws.name}</span>
+                  <span
+                    className="text-xs shrink-0"
+                    style={{ color: 'var(--subtle)' }}
+                  >
+                    {ws.type}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Permissions */}
         <div
           className="space-y-2 mb-6 p-4 rounded-lg"
           style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.1)' }}
         >
           <p className="text-xs font-medium mb-2" style={{ color: 'var(--muted)' }}>
-            Claude will be able to:
+            Claude will be able to
+            {selectedWs ? (
+              <span style={{ color: 'var(--text)' }}> in &ldquo;{selectedWs.name}&rdquo;</span>
+            ) : ''}:
           </p>
           {[
             'View and create tasks',
@@ -140,7 +219,7 @@ function OAuthConsent() {
 
         <button
           onClick={allow}
-          disabled={loading}
+          disabled={loading || !selectedWorkspaceId}
           className="amber-btn w-full py-3 rounded-lg text-sm mb-2"
         >
           {loading ? 'Authorizing…' : 'Allow access'}

@@ -87,11 +87,19 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
 
     const body = request.body as Record<string, string>;
 
+    // Allow choosing a specific workspace (for team members).
+    // Fall back to the user's personal workspace if not provided or not a member.
+    let workspaceId = authResult.workspaceId;
+    if (body.workspace_id && body.workspace_id !== workspaceId) {
+      const member = await workspaceRepository.getMember(body.workspace_id, authResult.user.id);
+      if (member) workspaceId = body.workspace_id;
+    }
+
     try {
       const redirectUrl = await oauthService.processConsentWithUserId({
         ...body,
         user_id: authResult.user.id,
-        workspace_id: authResult.workspaceId,
+        workspace_id: workspaceId,
       });
       return reply.send({ redirect_url: redirectUrl });
     } catch (err) {

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { ApiClient } from './api-client.js';
 import type { Task, Activity } from '@alashed/shared';
 
-export function registerTools(server: McpServer, api: ApiClient, workspaceId: string): void {
+export function registerTools(server: McpServer, api: ApiClient, workspaceId: string, userId: string): void {
 
   server.tool(
     'create_task',
@@ -171,7 +171,7 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
           tasks_in_progress: Array<{ id: string; title: string; priority: string }>;
           tasks_planned: Array<{ id: string; title: string; priority: string }>;
         }>;
-      }>(`/reports/daily?workspace_id=${workspaceId}&date=${resolvedDate}`);
+      }>(`/reports/daily?workspace_id=${workspaceId}&date=${resolvedDate}&user_id=${userId}`);
 
       const me = report.users[0];
       if (!me) {
