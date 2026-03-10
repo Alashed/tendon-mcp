@@ -80,11 +80,15 @@ function OAuthConsent() {
   };
 
   const deny = () => {
-    if (params.redirect_uri) {
-      const url = new URL(params.redirect_uri);
-      url.searchParams.set('error', 'access_denied');
-      if (params.state) url.searchParams.set('state', params.state);
-      window.location.href = url.toString();
+    try {
+      if (params.redirect_uri) {
+        const url = new URL(params.redirect_uri);
+        url.searchParams.set('error', 'access_denied');
+        if (params.state) url.searchParams.set('state', params.state);
+        window.location.href = url.toString();
+      }
+    } catch {
+      window.location.href = '/';
     }
   };
 

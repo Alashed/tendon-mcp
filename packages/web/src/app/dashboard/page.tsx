@@ -481,14 +481,14 @@ export default function DashboardPage() {
               </span>
             )}
             {claudeConnected === false && (
-              <a
+              <Link
                 href="/onboarding"
                 className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full transition-all"
                 style={{ background: 'rgba(59,130,246,0.07)', color: 'var(--accent)', border: '1px solid rgba(59,130,246,0.2)' }}
               >
                 <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent)', opacity: 0.5 }} />
                 Connect Claude →
-              </a>
+              </Link>
             )}
 
             {/* Plan badge */}

@@ -39,6 +39,7 @@ function JoinContent() {
     setStatus('joining');
     try {
       const token = await getToken();
+      if (!token) { setError('Not authenticated'); setStatus('error'); return; }
       const res = await fetch(`${API_URL}/invites/${code}/accept`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },

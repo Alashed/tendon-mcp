@@ -47,7 +47,8 @@ export default function TasksPage() {
     const token = await getToken();
     if (!token) { setLoading(false); return; }
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
+      const res = await fetch(`${apiUrl}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) { setLoading(false); return; }
