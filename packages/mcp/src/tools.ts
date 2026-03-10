@@ -136,8 +136,63 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
       text: z.string().describe('Blocker description'),
     },
     async ({ task_id, text }) => {
-      await api.patch<Task>(`/tasks/${task_id}`, { description: `[BLOCKER] ${text}` });
+      const task = await api.get<Task>(`/tasks/${task_id}`);
+      const existing = task.description ? task.description + '\n' : '';
+      await api.patch<Task>(`/tasks/${task_id}`, { description: `${existing}[BLOCKER] ${text}` });
       return { content: [{ type: 'text' as const, text: `🚧 Blocker logged: "${text}"` }] };
+    },
+  );
+
+  server.tool(
+    'get_daily_summary',
+    'Get a summary of work done on a specific date (default: today). Use date="yesterday" or YYYY-MM-DD.',
+    {
+      date: z.string().optional().describe('Date as YYYY-MM-DD or "yesterday" (default: today)'),
+    },
+    async ({ date }) => {
+      let resolvedDate: string;
+      if (!date || date === 'today') {
+        resolvedDate = new Date().toISOString().split('T')[0]!;
+      } else if (date === 'yesterday') {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        resolvedDate = d.toISOString().split('T')[0]!;
+      } else {
+        resolvedDate = date;
+      }
+
+      const report = await api.get<{
+        date: string;
+        users: Array<{
+          user_name: string;
+          focus_minutes: number;
+          session_count: number;
+          tasks_done: number;
+          tasks_in_progress: number;
+          tasks_planned: number;
+        }>;
+        tasks: { total: number; done_today: number; in_progress: number };
+      }>(`/reports/daily?workspace_id=${workspaceId}&date=${resolvedDate}`);
+
+      const me = report.users[0];
+      if (!me) {
+        return { content: [{ type: 'text' as const, text: `No activity recorded on ${resolvedDate}.` }] };
+      }
+
+      const h = Math.floor(me.focus_minutes / 60);
+      const m = me.focus_minutes % 60;
+      const timeStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+
+      const lines = [
+        `📅 Summary for ${resolvedDate}`,
+        '',
+        `⏱ Focus time: ${timeStr} across ${me.session_count} session(s)`,
+        `✅ Tasks completed: ${me.tasks_done}`,
+        `🔥 In progress: ${me.tasks_in_progress}`,
+        `📋 Planned: ${me.tasks_planned}`,
+      ];
+
+      return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
     },
   );
 }

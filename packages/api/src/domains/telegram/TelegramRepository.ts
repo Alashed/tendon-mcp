@@ -82,6 +82,14 @@ export class TelegramRepository {
     return result.rows;
   }
 
+  async findWorkspaceByChatId(chatId: number): Promise<string | null> {
+    const result = await query<{ workspace_id: string }>(
+      `SELECT workspace_id FROM telegram_chats WHERE chat_id = $1 LIMIT 1`,
+      [chatId],
+    );
+    return result.rows[0]?.workspace_id ?? null;
+  }
+
   async findChatsForReport(hour: number): Promise<TelegramChat[]> {
     const today = new Date().toISOString().split('T')[0];
     const result = await query<TelegramChat>(

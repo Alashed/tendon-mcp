@@ -89,16 +89,7 @@ export class TelegramService {
   }
 
   private async handleToday(chatId: number, threadId: number | null): Promise<void> {
-    // Find which workspace this chat belongs to
-    const chats = await this.repo.findChatsByWorkspace('__lookup__').catch(() => []);
-    // We can't easily look up by chat_id here without an extra query - add a helper
-    const result = await import('../../shared/db/pool.js').then(({ query }) =>
-      query<{ workspace_id: string }>(
-        `SELECT workspace_id FROM telegram_chats WHERE chat_id = $1 LIMIT 1`,
-        [chatId],
-      )
-    );
-    const workspaceId = result.rows[0]?.workspace_id;
+    const workspaceId = await this.repo.findWorkspaceByChatId(chatId);
     if (!workspaceId) {
       await this.sendMessage(chatId,
         '⚠️ This chat is not connected to a workspace yet.\nUse /connect to link it.',

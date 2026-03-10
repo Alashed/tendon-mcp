@@ -43,6 +43,15 @@ export async function taskRoutes(app: FastifyInstance): Promise<void> {
     return { data: tasks };
   });
 
+  app.get('/tasks/:id', { preHandler: authenticate }, async (request) => {
+    const { id } = request.params as { id: string };
+    const task = await taskRepository.findById(id);
+    if (!task) throw new NotFoundError('Task');
+    const member = await workspaceRepository.getMember(task.workspace_id, request.user.sub);
+    if (!member) throw new ForbiddenError();
+    return { data: task };
+  });
+
   app.post('/tasks', { preHandler: authenticate }, async (request, reply) => {
     const body = CreateTaskSchema.parse(request.body);
 
