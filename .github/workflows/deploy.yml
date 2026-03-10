@@ -92,6 +92,87 @@ jobs:
           echo "Timed out waiting for SSM command"
           exit 1
 
+  deploy-mcp:
+    name: Deploy MCP
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared
+        run: npm run build -w packages/shared
+
+      - name: Build MCP
+        run: npm run build -w packages/mcp
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.REGION }}
+
+      - name: Package & upload to S3
+        run: |
+          cd packages/mcp
+          tar -czf /tmp/mcp.tar.gz dist package.json ecosystem.config.cjs
+          aws s3 cp /tmp/mcp.tar.gz s3://${{ env.S3_BUCKET }}/deployments/mcp.tar.gz
+
+      - name: Deploy via SSM
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --region ${{ env.REGION }} \
+            --instance-ids ${{ env.INSTANCE_ID }} \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[
+              'set -e',
+              'mkdir -p /home/ubuntu/apps/tendon-mcp',
+              'cd /home/ubuntu/apps/tendon-mcp',
+              'aws s3 cp s3://${{ env.S3_BUCKET }}/deployments/mcp.tar.gz mcp.tar.gz --region ${{ env.REGION }}',
+              'rm -rf dist package.json ecosystem.config.cjs',
+              'tar -xzf mcp.tar.gz',
+              'rm mcp.tar.gz',
+              'npm install --omit=dev --prefer-offline 2>/dev/null || npm install --omit=dev',
+              'pm2 delete tendon-mcp 2>/dev/null || true',
+              'pm2 delete alashed-mcp 2>/dev/null || true',
+              'ALASHED_API_URL=https://api.tendon.alashed.kz MCP_BASE_URL=https://mcp.tendon.alashed.kz pm2 start /home/ubuntu/apps/tendon-mcp/ecosystem.config.cjs',
+              'pm2 save',
+              'echo DONE'
+            ]" \
+            --output text \
+            --query "Command.CommandId")
+
+          echo "SSM Command ID: $COMMAND_ID"
+
+          for i in $(seq 1 20); do
+            STATUS=$(aws ssm get-command-invocation \
+              --region ${{ env.REGION }} \
+              --instance-id ${{ env.INSTANCE_ID }} \
+              --command-id $COMMAND_ID \
+              --query "Status" --output text 2>/dev/null || echo "Pending")
+            echo "[$i] Status: $STATUS"
+            if [ "$STATUS" = "Success" ]; then exit 0; fi
+            if [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Cancelled" ]; then
+              aws ssm get-command-invocation \
+                --region ${{ env.REGION }} \
+                --instance-id ${{ env.INSTANCE_ID }} \
+                --command-id $COMMAND_ID \
+                --query "StandardErrorContent" --output text
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for SSM command"
+          exit 1
+
   deploy-web:
     name: Deploy Web
     runs-on: ubuntu-latest
