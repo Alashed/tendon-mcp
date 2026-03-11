@@ -24,9 +24,12 @@ app.get('/health', (_req, res) => {
 app.post('/mcp', async (req, res) => {
   const body = req.body as { method?: string } | undefined;
 
-  // Allow initialize without auth so Claude Code can discover tools.
+  // Allow discovery requests without auth so Claude Code can list tools.
   // OAuth is triggered automatically when the first real tool call returns 401.
-  const isHandshake = body?.method === 'initialize' || body?.method === 'notifications/initialized';
+  const isHandshake = body?.method === 'initialize'
+    || body?.method === 'notifications/initialized'
+    || body?.method === 'tools/list'
+    || body?.method === 'prompts/list';
 
   if (isHandshake) {
     const server = new McpServer({ name: 'tendon', version: '1.0.0' });
