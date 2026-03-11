@@ -9,11 +9,21 @@ import { registerPrompts } from './prompts.js';
 
 const PORT = parseInt(process.env['PORT'] ?? '3002', 10);
 const API_URL = process.env['ALASHED_API_URL'] ?? 'http://localhost:3001';
-const RESOURCE_METADATA_URL =
-  process.env['RESOURCE_METADATA_URL'] ?? 'https://tendon.alashed.kz/.well-known/oauth-protected-resource';
+const MCP_BASE_URL = process.env['MCP_BASE_URL'] ?? `http://localhost:${PORT}`;
+const RESOURCE_METADATA_URL = `${MCP_BASE_URL}/.well-known/oauth-protected-resource`;
 
 const app = express();
 app.use(express.json());
+
+// ── RFC 9728: Protected Resource Metadata ────────────────────────────────────
+// Claude Code fetches this when it gets a 401 with resource_metadata in WWW-Authenticate.
+// It uses authorization_servers to find the OAuth server, then opens a browser.
+app.get('/.well-known/oauth-protected-resource', (_req, res) => {
+  res.json({
+    resource: MCP_BASE_URL,
+    authorization_servers: [API_URL],
+  });
+});
 
 // ── Health ───────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
@@ -34,7 +44,7 @@ app.post('/mcp', async (req, res) => {
   if (isHandshake) {
     const server = new McpServer({ name: 'tendon', version: '1.0.0' });
     registerTools(server, new ApiClient(API_URL, ''), '', '');
-    registerPrompts(server, '');
+    registerPrompts(server);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     res.on('close', () => { transport.close(); server.close(); });
     try {
@@ -81,7 +91,7 @@ app.post('/mcp', async (req, res) => {
   );
 
   registerTools(server, api, workspaceId, userId);
-  registerPrompts(server, workspaceId);
+  registerPrompts(server);
 
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 

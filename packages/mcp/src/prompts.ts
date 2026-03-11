@@ -1,7 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-export function registerPrompts(server: McpServer, workspaceId: string): void {
-  void workspaceId;
+export function registerPrompts(server: McpServer): void {
 
   // ── /morning — start of day ────────────────────────────────────────────────
   server.prompt(

@@ -11,9 +11,10 @@ CREATE TABLE telegram_chats (
   report_hour       SMALLINT NOT NULL DEFAULT 22,
   reports_on        BOOLEAN NOT NULL DEFAULT TRUE,
   last_report_date  DATE,
-  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (chat_id, COALESCE(thread_id, 0))
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX idx_tg_chats_unique ON telegram_chats(chat_id, COALESCE(thread_id, 0));
 
 CREATE TABLE telegram_link_codes (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -77,8 +77,7 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
     }
 
     // Standalone mode: serve built-in HTML consent page
-    const qs = new URLSearchParams(params).toString();
-    const html = buildConsentHtml(config.apiBaseUrl, qs, params);
+    const html = buildConsentHtml(config.apiBaseUrl, params);
     return reply.header('Content-Type', 'text/html; charset=utf-8').send(html);
   });
 
@@ -175,8 +174,7 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
 // ── Built-in HTML consent page (standalone / self-hosted mode) ───────────────
 // No Clerk, no React. Plain HTML + Fetch API.
 // Used when WEB_BASE_URL is not set or points to the API itself.
-function buildConsentHtml(apiBase: string, qs: string, params: Record<string, string>): string {
-  void qs;
+function buildConsentHtml(apiBase: string, params: Record<string, string>): string {
   const paramsJson = JSON.stringify(params);
   return `<!DOCTYPE html>
 <html lang="en">

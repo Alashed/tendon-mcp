@@ -149,8 +149,6 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
     },
     async ({ task_id, status }) => {
       const task = await api.patch<Task>(`/tasks/${task_id}`, { status });
-      const prev = Object.keys(STATUS_ICON).find(s => s !== status) ?? '?';
-      void prev;
       return {
         content: [{
           type: 'text' as const,
@@ -165,16 +163,17 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
     'Start a focus/time tracking session on a task (auto-stops any current session)',
     {
       task_id: z.string().optional().describe('Task UUID to focus on'),
+      task_title: z.string().optional().describe('Task title (pass if already known to avoid extra API call)'),
     },
-    async ({ task_id }) => {
+    async ({ task_id, task_title }) => {
       const activity = await api.post<Activity>('/activities/start', {
         workspace_id: workspaceId,
         task_id,
         source: 'claude',
       });
 
-      let taskTitle = 'General focus';
-      if (task_id) {
+      let taskTitle = task_title ?? 'General focus';
+      if (task_id && !task_title) {
         try {
           const t = await api.get<Task>(`/tasks/${task_id}`);
           taskTitle = t.title;
@@ -296,8 +295,7 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
       task_id: z.string().describe('Task UUID to archive'),
     },
     async ({ task_id }) => {
-      const task = await api.get<Task>(`/tasks/${task_id}`);
-      await api.patch<Task>(`/tasks/${task_id}`, { status: 'archived' });
+      const task = await api.patch<Task>(`/tasks/${task_id}`, { status: 'archived' });
       return {
         content: [{
           type: 'text' as const,

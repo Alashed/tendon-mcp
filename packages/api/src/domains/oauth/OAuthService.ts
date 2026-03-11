@@ -161,7 +161,7 @@ export class OAuthService {
       access_token: token.token,
       refresh_token: refresh.token,
       token_type: 'Bearer',
-      expires_in: 86400, // 24 hours
+      expires_in: 2592000, // 30 days
       scope: token.scope,
     };
   }
@@ -198,7 +198,7 @@ export class OAuthService {
       access_token: token.token,
       refresh_token: refresh.token,
       token_type: 'Bearer',
-      expires_in: 86400,
+      expires_in: 2592000, // 30 days
       scope: token.scope,
     };
   }
