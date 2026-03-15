@@ -30,7 +30,7 @@ function JoinContent() {
       .then((r) => r.json())
       .then((d) => {
         if (d.data) setInvite(d.data);
-        else setInviteError(d.error ?? 'Invalid invite');
+        else setInviteError(d.message ?? d.error ?? 'Invalid invite');
       })
       .catch(() => setInviteError('Could not load invite'));
   }, [code]);
@@ -112,11 +112,11 @@ function JoinContent() {
           You've joined <strong>{invite.workspace_name}</strong> as {invite.role}.
         </p>
         <button
-          onClick={() => router.push('/onboarding')}
+          onClick={() => router.push('/dashboard')}
           className="px-5 py-2.5 rounded-xl font-medium text-sm"
           style={{ background: '#3B82F6', color: '#fff' }}
         >
-          Set up Claude Code →
+          Go to dashboard →
         </button>
       </div>
     );

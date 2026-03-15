@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Task, Activity } from '@alashed/shared';
+import type { SessionAuth } from './routes.js';
 
 interface ApiClient {
   get<T>(path: string): Promise<T>;
@@ -49,7 +50,7 @@ function taskLine(t: { title: string; priority: string }, prefix = '  ├─', i
 
 // ── Tools ─────────────────────────────────────────────────────────────────────
 
-export function registerTools(server: McpServer, api: ApiClient, workspaceId: string, userId: string): void {
+export function registerTools(server: McpServer, api: ApiClient, auth: SessionAuth): void {
 
   server.tool(
     'whoami',
@@ -61,18 +62,18 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
         workspaces: Array<{ id: string; name: string; type: string; role: string }>;
       }>('/auth/me');
 
-      const workspace = me.workspaces.find(w => w.id === workspaceId) ?? me.workspaces[0];
+      const workspace = me.workspaces.find(w => w.id === auth.workspaceId) ?? me.workspaces[0];
 
       const [inProgress, planned] = await Promise.all([
-        api.get<unknown[]>(`/tasks?workspace_id=${workspaceId}&status=in_progress`),
-        api.get<unknown[]>(`/tasks?workspace_id=${workspaceId}&status=planned`),
+        api.get<unknown[]>(`/tasks?workspace_id=${auth.workspaceId}&status=in_progress`),
+        api.get<unknown[]>(`/tasks?workspace_id=${auth.workspaceId}&status=planned`),
       ]);
 
       const lines = [
         header('✓ Connected to Tendon'),
         '',
         `  User      : ${me.user.name} <${me.user.email}>`,
-        `  Workspace : ${workspace?.name ?? workspaceId}`,
+        `  Workspace : ${workspace?.name ?? auth.workspaceId}`,
         `  Role      : ${workspace?.role ?? 'member'}`,
         '',
         `  Tasks in progress : ${inProgress.length}`,
@@ -99,12 +100,12 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
       let project_id: string | undefined;
       if (project) {
         try {
-          const proj = await api.post<{ id: string }>('/projects', { workspace_id: workspaceId, name: project });
+          const proj = await api.post<{ id: string }>('/projects', { workspace_id: auth.workspaceId, name: project });
           project_id = proj.id;
         } catch { /* ignore */ }
       }
       const task = await api.post<Task>('/tasks', {
-        workspace_id: workspaceId,
+        workspace_id: auth.workspaceId,
         title, description, priority, due_date, project_id,
         source: 'claude',
       });
@@ -128,7 +129,7 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
       status: z.enum(['planned', 'in_progress', 'done']).optional().describe('Filter by status'),
     },
     async ({ status }) => {
-      const rawTasks = await api.get<Array<Task & { project_name?: string }>>(`/tasks?workspace_id=${workspaceId}${status ? `&status=${status}` : ''}`);
+      const rawTasks = await api.get<Array<Task & { project_name?: string }>>(`/tasks?workspace_id=${auth.workspaceId}${status ? `&status=${status}` : ''}`);
       if (!rawTasks.length) {
         return { content: [{ type: 'text' as const, text: '○  No tasks found.' }] };
       }
@@ -186,7 +187,7 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
     },
     async ({ task_id, task_title }) => {
       const activity = await api.post<Activity>('/activities/start', {
-        workspace_id: workspaceId,
+        workspace_id: auth.workspaceId,
         task_id,
         source: 'claude',
       });
@@ -214,7 +215,7 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
     'Stop the current focus/time tracking session',
     {},
     async () => {
-      const activity = await api.post<Activity | null>('/activities/stop', { workspace_id: workspaceId });
+      const activity = await api.post<Activity | null>('/activities/stop', { workspace_id: auth.workspaceId });
       if (!activity) {
         return { content: [{ type: 'text' as const, text: '○  No active session to stop.' }] };
       }
@@ -242,9 +243,9 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
       const dayLabel = new Date().toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
 
       const [rawInProgress, rawPlanned, activities] = await Promise.all([
-        api.get<Array<Task & { project_name?: string }>>(`/tasks?workspace_id=${workspaceId}&status=in_progress`),
-        api.get<Array<Task & { project_name?: string }>>(`/tasks?workspace_id=${workspaceId}&status=planned`),
-        api.get<Activity[]>(`/activities?workspace_id=${workspaceId}&date=${today}`),
+        api.get<Array<Task & { project_name?: string }>>(`/tasks?workspace_id=${auth.workspaceId}&status=in_progress`),
+        api.get<Array<Task & { project_name?: string }>>(`/tasks?workspace_id=${auth.workspaceId}&status=planned`),
+        api.get<Activity[]>(`/activities?workspace_id=${auth.workspaceId}&date=${today}`),
       ]);
 
       const taskWithProject = (t: Task & { project_name?: string }) => ({
@@ -353,7 +354,7 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
               tasks_in_progress: Array<{ title: string }>;
             }>;
             totals: { total_focus_minutes: number; total_done_today: number };
-          }>(`/reports/daily?workspace_id=${workspaceId}&date=${date}&user_id=${userId}`)
+          }>(`/reports/daily?workspace_id=${auth.workspaceId}&date=${date}&user_id=${auth.userId}`)
           .catch(() => null),
         ),
       );
@@ -452,7 +453,7 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
           tasks_in_progress: Array<{ id: string; title: string; priority: string }>;
           tasks_planned: Array<{ id: string; title: string; priority: string }>;
         }>;
-      }>(`/reports/daily?workspace_id=${workspaceId}&date=${resolvedDate}&user_id=${userId}`);
+      }>(`/reports/daily?workspace_id=${auth.workspaceId}&date=${resolvedDate}&user_id=${auth.userId}`);
 
       const me = report.users[0];
       if (!me) {

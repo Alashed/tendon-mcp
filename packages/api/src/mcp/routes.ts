@@ -9,19 +9,36 @@ import { registerPrompts } from './prompts.js';
 import { appEvents } from '../events.js';
 
 // ── Internal HTTP client (loopback to same process) ───────────────────────────
-class InternalApiClient {
-  constructor(private readonly token: string) {}
+// `token` is intentionally mutable — updated when the OAuth token is refreshed
+// or when the session receives its first authenticated tools/call after a
+// handshake-only initialize (anon → auth upgrade path).
+export class InternalApiClient {
+  constructor(public token: string) {}
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const res = await fetch(`http://127.0.0.1:${config.port}${path}`, {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.token}`,
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+  private async request<T>(method: string, path: string, body?: unknown, attempt = 0): Promise<T> {
+    let res: Response;
+    try {
+      res = await fetch(`http://127.0.0.1:${config.port}${path}`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.token}`,
+        },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+    } catch (networkErr) {
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 100 * 2 ** attempt));
+        return this.request<T>(method, path, body, attempt + 1);
+      }
+      throw networkErr;
+    }
+
     if (!res.ok) {
+      if (res.status >= 500 && res.status !== 501 && attempt < 3) {
+        await new Promise((r) => setTimeout(r, 100 * 2 ** attempt));
+        return this.request<T>(method, path, body, attempt + 1);
+      }
       const err = await res.json().catch(() => ({ error: res.statusText }));
       throw new Error(`API ${method} ${path} (${res.status}): ${JSON.stringify(err)}`);
     }
@@ -42,10 +59,21 @@ async function validateToken(token: string) {
   return { sub: info.sub, email: info.email ?? '', workspace_id: info.workspace_id };
 }
 
+// ── Session-scoped auth ref — passed by reference into tool handlers ──────────
+// Mutable so tools always read the latest token/workspace without re-registration.
+export interface SessionAuth {
+  token: string;
+  workspaceId: string;
+  userId: string;
+  email: string;
+}
+
 // ── Session store ─────────────────────────────────────────────────────────────
 interface Session {
   transport: StreamableHTTPServerTransport;
   server: McpServer;
+  api: InternalApiClient;
+  auth: SessionAuth;
   tokenInfo: { sub: string; email: string; workspace_id: string } | null;
 }
 
@@ -82,7 +110,7 @@ const RESOURCE_METADATA_URL = `${config.apiBaseUrl}/.well-known/oauth-protected-
 // ── Fastify plugin ─────────────────────────────────────────────────────────────
 export async function mcpRoutes(app: FastifyInstance): Promise<void> {
 
-  // RFC 9728: Protected Resource Metadata (served from API, not separate MCP service)
+  // RFC 9728: Protected Resource Metadata
   app.get('/.well-known/oauth-protected-resource', async (_req, reply) => {
     return reply.send({
       resource: config.apiBaseUrl,
@@ -95,7 +123,12 @@ export async function mcpRoutes(app: FastifyInstance): Promise<void> {
     const sessionId = request.headers['mcp-session-id'] as string | undefined;
     const body = request.body as { method?: string } | undefined;
 
-    // Resume existing session
+    // Stale session ID → tell client to reinitialize
+    if (sessionId && !sessions.has(sessionId)) {
+      return reply.status(410).send({ error: 'Session expired — please reinitialize' });
+    }
+
+    // ── Resume existing session ───────────────────────────────────────────────
     if (sessionId && sessions.has(sessionId)) {
       const session = sessions.get(sessionId)!;
       const token = (request.headers['authorization'] as string | undefined)?.slice(7);
@@ -107,7 +140,15 @@ export async function mcpRoutes(app: FastifyInstance): Promise<void> {
             .send({ error: 'missing_token' });
         }
         try {
-          session.tokenInfo = await validateToken(token);
+          const info = await validateToken(token);
+          // Update the mutable auth ref — tool handlers pick up the new values
+          // without needing to be re-registered.
+          session.tokenInfo = info;
+          session.auth.token = token;
+          session.auth.workspaceId = info.workspace_id;
+          session.auth.userId = info.sub;
+          session.auth.email = info.email;
+          session.api.token = token;
         } catch {
           return reply.status(401)
             .header('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}", error="invalid_token"`)
@@ -120,17 +161,17 @@ export async function mcpRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
 
-    // New session
+    // ── New session ───────────────────────────────────────────────────────────
     const isHandshake = body?.method === 'initialize'
       || body?.method === 'notifications/initialized'
       || body?.method === 'tools/list'
       || body?.method === 'prompts/list';
 
     let tokenInfo: Session['tokenInfo'] = null;
-    let token = '';
+    let token = (request.headers['authorization'] as string | undefined)?.slice(7) ?? '';
 
     if (!isHandshake) {
-      token = (request.headers['authorization'] as string | undefined)?.slice(7) ?? '';
+      // Non-handshake methods always require auth
       if (!token) {
         return reply.status(401)
           .header('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}"`)
@@ -143,25 +184,32 @@ export async function mcpRoutes(app: FastifyInstance): Promise<void> {
           .header('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}", error="invalid_token"`)
           .send({ error: 'invalid_token' });
       }
+    } else if (token) {
+      // Handshake + token present (Claude Code sends token on all requests after OAuth).
+      // Use it so tools are registered with real credentials immediately.
+      try { tokenInfo = await validateToken(token); } catch { token = ''; }
     }
 
-    const workspaceId = tokenInfo?.workspace_id ?? '';
-    const userId = tokenInfo?.sub ?? '';
-    const userEmail = tokenInfo?.email ?? '';
+    // Mutable auth ref — shared with all tool handlers via closure.
+    // When the first authenticated tools/call arrives on an anon session,
+    // we mutate this object and tools instantly see the updated values.
+    const auth: SessionAuth = {
+      token,
+      workspaceId: tokenInfo?.workspace_id ?? '',
+      userId: tokenInfo?.sub ?? '',
+      email: tokenInfo?.email ?? '',
+    };
 
     const server = new McpServer(
       { name: 'tendon', version: '1.0.0' },
-      { instructions: tokenInfo ? buildInstructions(userEmail, workspaceId) : undefined },
+      { instructions: tokenInfo ? buildInstructions(auth.email, auth.workspaceId) : undefined },
     );
 
     const api = new InternalApiClient(token);
-    registerTools(server, api, workspaceId, userId);
+    registerTools(server, api, auth);
     registerPrompts(server);
 
     // ── Resource: tasks://today ────────────────────────────────────────────────
-    // Claude can read this resource directly and subscribes to live updates.
-    // When any task mutates, appEvents emits 'task:changed' → we push
-    // notifications/resources/updated → Claude re-reads → always fresh data.
     server.resource(
       'tasks-today',
       'tasks://today',
@@ -190,15 +238,15 @@ export async function mcpRoutes(app: FastifyInstance): Promise<void> {
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sid) => {
-        sessions.set(sid, { transport, server, tokenInfo });
-        app.log.info({ sid, user: userEmail || 'anon' }, 'mcp session created');
+        sessions.set(sid, { transport, server, api, auth, tokenInfo });
+        app.log.info({ sid, user: auth.email || 'anon' }, 'mcp session created');
       },
     });
 
     // ── Subscribe to task changes → push resource update notification ──────────
     const onTaskChanged = (workspace_id: string) => {
-      const info = sessions.get(transport.sessionId ?? '')?.tokenInfo;
-      if (!info || info.workspace_id !== workspace_id) return;
+      const session = sessions.get(transport.sessionId ?? '');
+      if (!session?.tokenInfo || session.tokenInfo.workspace_id !== workspace_id) return;
       server.server.notification({
         method: 'notifications/resources/updated',
         params: { uri: 'tasks://today' },
@@ -228,7 +276,7 @@ export async function mcpRoutes(app: FastifyInstance): Promise<void> {
   app.get('/mcp', async (request, reply) => {
     const sessionId = request.headers['mcp-session-id'] as string | undefined;
     if (!sessionId || !sessions.has(sessionId)) {
-      return reply.status(404).send({ error: 'Session not found' });
+      return reply.status(410).send({ error: 'Session expired — please reinitialize' });
     }
     const { transport } = sessions.get(sessionId)!;
     reply.hijack();

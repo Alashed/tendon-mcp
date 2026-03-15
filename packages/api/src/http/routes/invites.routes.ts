@@ -70,31 +70,51 @@ export async function inviteRoutes(app: FastifyInstance): Promise<void> {
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
     if (!token) return reply.status(401).send({ error: 'Unauthorized' });
 
-    const { user, workspaceId: _personalWs } = await verifyAndUpsertClerkUser(
-      token, userRepository, workspaceRepository,
-    );
+    let user: Awaited<ReturnType<typeof verifyAndUpsertClerkUser>>['user'];
+    try {
+      ({ user } = await verifyAndUpsertClerkUser(token, userRepository, workspaceRepository));
+    } catch {
+      return reply.status(401).send({ error: 'Invalid token' });
+    }
 
-    // Fetch and validate invite
-    const result = await query<{
-      id: string; workspace_id: string; role: string; email: string | null;
-      expires_at: string; used: boolean;
+    // Atomic claim: only succeeds for the first request, prevents race conditions
+    const claimed = await query<{
+      id: string; workspace_id: string; role: string; email: string | null; expires_at: string;
     }>(
-      `SELECT * FROM workspace_invites WHERE code = $1`,
+      `UPDATE workspace_invites
+       SET used = TRUE
+       WHERE code = $1 AND used = FALSE AND expires_at > NOW()
+       RETURNING id, workspace_id, role, email, expires_at`,
       [code],
     );
-    const invite = result.rows[0];
-    if (!invite) throw new NotFoundError('Invite');
-    if (invite.used) return reply.status(410).send({ error: 'Invite already used' });
-    if (new Date(invite.expires_at) < new Date()) {
+
+    if (claimed.rows.length === 0) {
+      // Either not found, already used, or expired — check which
+      const check = await query<{ used: boolean; expires_at: string }>(
+        `SELECT used, expires_at FROM workspace_invites WHERE code = $1`,
+        [code],
+      );
+      if (!check.rows[0]) throw new NotFoundError('Invite');
+      if (check.rows[0].used) return reply.status(410).send({ error: 'Invite already used' });
       return reply.status(410).send({ error: 'Invite expired' });
     }
+
+    const invite = claimed.rows[0]!;
+
     if (invite.email && invite.email !== user.email) {
+      // Rollback the claim
+      await query(`UPDATE workspace_invites SET used = FALSE WHERE id = $1`, [invite.id]);
       return reply.status(403).send({ error: 'This invite is for a different email' });
     }
 
-    // Add member + mark invite used
-    await workspaceRepository.addMember(invite.workspace_id, user.id, invite.role as any);
-    await query(`UPDATE workspace_invites SET used = TRUE WHERE id = $1`, [invite.id]);
+    // Skip if already a member with equal or higher role (prevents owner demotion)
+    const existing = await workspaceRepository.getMember(invite.workspace_id, user.id);
+    const roleRank: Record<string, number> = { owner: 3, admin: 2, member: 1, guest: 0 };
+    const existingRank = roleRank[existing?.role ?? ''] ?? -1;
+    const inviteRank = roleRank[invite.role] ?? 0;
+    if (!existing || inviteRank > existingRank) {
+      await workspaceRepository.addMember(invite.workspace_id, user.id, invite.role as any);
+    }
 
     const workspace = await workspaceRepository.findById(invite.workspace_id);
     return reply.status(200).send({

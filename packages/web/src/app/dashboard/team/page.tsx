@@ -67,6 +67,11 @@ export default function TeamPage() {
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]!);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [myRole, setMyRole] = useState<string>('');
+  const [inviteLink, setInviteLink] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Load workspaces
   useEffect(() => {
@@ -82,7 +87,10 @@ export default function TeamPage() {
         const list: Workspace[] = data.workspaces ?? [];
         setWorkspaces(list);
         const team = list.find((w) => w.type === 'team') ?? list[0];
-        if (team) setWorkspaceId(team.id);
+        if (team) {
+          setWorkspaceId(team.id);
+          setMyRole((team as Workspace & { role?: string }).role ?? '');
+        }
       } catch { /* ignore */ }
     };
     load();
@@ -117,6 +125,37 @@ export default function TeamPage() {
   const toggleExpand = (userId: string) =>
     setExpanded((prev) => ({ ...prev, [userId]: !prev[userId] }));
 
+  const createInvite = async () => {
+    setInviting(true);
+    setInviteError('');
+    try {
+      const token = await getToken();
+      if (!token || !workspaceId) return;
+      const res = await fetch(`${API_URL}/workspaces/${workspaceId}/invites`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'member' }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setInviteError(body.message ?? body.error ?? 'Failed to generate invite');
+        return;
+      }
+      setInviteLink(body.data.invite_url);
+    } catch {
+      setInviteError('Network error');
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(inviteLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh' }}>
       <div className="max-w-3xl mx-auto px-8 py-8">
@@ -146,6 +185,18 @@ export default function TeamPage() {
             </select>
           )}
 
+          {/* Invite button — only owner/admin */}
+          {['owner', 'admin'].includes(myRole) && (
+            <button
+              onClick={createInvite}
+              disabled={inviting}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0"
+              style={{ background: 'rgba(59,130,246,0.12)', color: 'var(--accent)' }}
+            >
+              {inviting ? 'Generating…' : '+ Invite'}
+            </button>
+          )}
+
           {/* Date picker */}
           <div className="flex gap-1 p-1 rounded-lg shrink-0" style={{ background: 'var(--surface)' }}>
             {[
@@ -166,6 +217,49 @@ export default function TeamPage() {
             ))}
           </div>
         </div>
+
+        {/* ── Invite error ──────────────────────── */}
+        {inviteError && (
+          <div
+            className="text-xs px-3 py-2 rounded-lg mb-4"
+            style={{ background: 'rgba(239,68,68,0.08)', color: '#FCA5A5', border: '1px solid rgba(239,68,68,0.15)' }}
+          >
+            {inviteError}
+          </div>
+        )}
+
+        {/* ── Invite link ───────────────────────── */}
+        {inviteLink && (
+          <div
+            className="flex items-center gap-2 mb-5 px-3 py-2.5 rounded-xl"
+            style={{ background: 'rgba(59,130,246,0.07)', border: '1px solid rgba(59,130,246,0.15)' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--accent)', flexShrink: 0 }}>
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="flex-1 text-xs font-mono truncate" style={{ color: 'var(--muted)' }}>
+              {inviteLink}
+            </span>
+            <button
+              onClick={copyLink}
+              className="text-xs px-2.5 py-1 rounded-lg shrink-0 transition-all font-medium"
+              style={{
+                background: copied ? 'rgba(34,197,94,0.12)' : 'rgba(59,130,246,0.15)',
+                color: copied ? '#22C55E' : 'var(--accent)',
+              }}
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+            <button
+              onClick={() => setInviteLink('')}
+              className="text-xs shrink-0"
+              style={{ color: 'var(--subtle)' }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* ── Totals ────────────────────────────── */}
         {report && (
