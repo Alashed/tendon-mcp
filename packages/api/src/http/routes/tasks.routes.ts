@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth.js';
 import { getContainer } from '../../di/container.js';
 import { ForbiddenError, NotFoundError } from '../../shared/errors/AppError.js';
 import { assertTaskLimit } from '../../shared/limits.js';
+import { emitTaskChanged } from '../../events.js';
 
 const CreateTaskSchema = z.object({
   workspace_id: z.string().uuid(),
@@ -66,6 +67,7 @@ export async function taskRoutes(app: FastifyInstance): Promise<void> {
       created_by: request.user.sub,
       source: body.source ?? 'web',
     });
+    emitTaskChanged(task.workspace_id);
     return reply.status(201).send({ data: task });
   });
 
@@ -88,6 +90,7 @@ export async function taskRoutes(app: FastifyInstance): Promise<void> {
       updated = (await taskRepository.update(id, rest)) ?? updated;
     }
 
+    emitTaskChanged(updated.workspace_id);
     return { data: updated };
   });
 
@@ -101,6 +104,7 @@ export async function taskRoutes(app: FastifyInstance): Promise<void> {
     if (!member) throw new ForbiddenError();
 
     await taskRepository.archive(id);
+    emitTaskChanged(task.workspace_id);
     return reply.status(204).send();
   });
 }

@@ -6,6 +6,7 @@ import { getContainer } from '../di/container.js';
 import { config } from '../config/index.js';
 import { registerTools } from './tools.js';
 import { registerPrompts } from './prompts.js';
+import { appEvents } from '../events.js';
 
 // ── Internal HTTP client (loopback to same process) ───────────────────────────
 class InternalApiClient {
@@ -146,8 +147,38 @@ export async function mcpRoutes(app: FastifyInstance): Promise<void> {
       { instructions: tokenInfo ? buildInstructions(userEmail, workspaceId) : undefined },
     );
 
-    registerTools(server, new InternalApiClient(token), workspaceId, userId);
+    const api = new InternalApiClient(token);
+    registerTools(server, api, workspaceId, userId);
     registerPrompts(server);
+
+    // ── Resource: tasks://today ────────────────────────────────────────────────
+    // Claude can read this resource directly and subscribes to live updates.
+    // When any task mutates, appEvents emits 'task:changed' → we push
+    // notifications/resources/updated → Claude re-reads → always fresh data.
+    server.resource(
+      'tasks-today',
+      'tasks://today',
+      async (uri) => {
+        const session = sessions.get(transport.sessionId ?? '');
+        const info = session?.tokenInfo;
+        if (!info) return { contents: [] };
+
+        const today = new Date().toISOString().split('T')[0]!;
+        const [inProgress, planned, activities] = await Promise.all([
+          api.get<unknown[]>(`/tasks?workspace_id=${info.workspace_id}&status=in_progress`),
+          api.get<unknown[]>(`/tasks?workspace_id=${info.workspace_id}&status=planned`),
+          api.get<unknown[]>(`/activities?workspace_id=${info.workspace_id}&date=${today}`),
+        ]);
+
+        return {
+          contents: [{
+            uri: uri.href,
+            text: JSON.stringify({ inProgress, planned, activities, as_of: new Date().toISOString() }),
+            mimeType: 'application/json',
+          }],
+        };
+      },
+    );
 
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => randomUUID(),
@@ -157,7 +188,19 @@ export async function mcpRoutes(app: FastifyInstance): Promise<void> {
       },
     });
 
+    // ── Subscribe to task changes → push resource update notification ──────────
+    const onTaskChanged = (workspace_id: string) => {
+      const info = sessions.get(transport.sessionId ?? '')?.tokenInfo;
+      if (!info || info.workspace_id !== workspace_id) return;
+      server.server.notification({
+        method: 'notifications/resources/updated',
+        params: { uri: 'tasks://today' },
+      }).catch(() => {});
+    };
+    appEvents.on('task:changed', onTaskChanged);
+
     transport.onclose = () => {
+      appEvents.off('task:changed', onTaskChanged);
       if (transport.sessionId) {
         sessions.delete(transport.sessionId);
         app.log.info({ sid: transport.sessionId }, 'mcp session closed');
