@@ -54,6 +54,7 @@ jobs:
             --parameters "commands=[
               'set -e',
               'mkdir -p /home/ubuntu/tendon',
+              'cp /home/ubuntu/alashed-tracker/.env /home/ubuntu/tendon/.env 2>/dev/null || true',
               'cd /home/ubuntu/tendon',
               'aws s3 cp s3://${{ env.S3_BUCKET }}/deployments/api.tar.gz api.tar.gz --region ${{ env.REGION }}',
               'rm -rf dist migrations ecosystem.config.cjs',
