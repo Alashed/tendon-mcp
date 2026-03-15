@@ -225,7 +225,10 @@ interface HeatDay {
 
 function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: string }) {
   const [days, setDays] = useState<HeatDay[]>([]);
-  const [tooltip, setTooltip] = useState<{ day: string; focus_minutes: number; tasks_done: number; x: number; y: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{
+    day: string; focus_minutes: number; tasks_done: number; session_count: number;
+    x: number; y: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!workspaceId || !token) return;
@@ -237,131 +240,154 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
       .catch(() => {});
   }, [workspaceId, token]);
 
-  // Build a map of date → data
   const byDay = new Map<string, HeatDay>();
   for (const d of days) byDay.set(d.day, d);
 
-  // Total stats
   const totalMinutes = days.reduce((s, d) => s + d.focus_minutes, 0);
-  const totalDays = days.filter((d) => d.focus_minutes > 0).length;
+  const activeDays = days.filter((d) => d.focus_minutes > 0 || d.tasks_done > 0).length;
 
-  // Generate 16 weeks of dates ending today
+  // Build 16-week grid starting from Monday
   const WEEKS = 16;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Start from Monday of the week 16 weeks ago
   const startDate = new Date(today);
   startDate.setDate(startDate.getDate() - WEEKS * 7);
-  // Align to Monday
-  const dow = startDate.getDay(); // 0=Sun
-  const daysToMon = dow === 0 ? 1 : (8 - dow) % 7 === 0 ? 0 : (8 - dow) % 7;
-  startDate.setDate(startDate.getDate() + daysToMon);
+  const dow = startDate.getDay();
+  const toMon = dow === 0 ? 1 : dow === 1 ? 0 : 8 - dow;
+  startDate.setDate(startDate.getDate() + toMon);
 
-  // Build grid: columns = weeks, rows = Mon–Sun (0–6)
+  // grid[col][row] — col = week, row = Mon(0)..Sun(6)
   const grid: Array<Array<{ date: string; inRange: boolean }>> = [];
-  const d = new Date(startDate);
-  while (d <= today) {
+  const cur = new Date(startDate);
+  while (cur <= today) {
     const col: Array<{ date: string; inRange: boolean }> = [];
-    for (let row = 0; row < 7; row++) {
-      if (d <= today) {
-        col.push({ date: d.toISOString().split('T')[0]!, inRange: true });
-      } else {
-        col.push({ date: '', inRange: false });
-      }
-      d.setDate(d.getDate() + 1);
+    for (let r = 0; r < 7; r++) {
+      col.push(cur <= today
+        ? { date: cur.toISOString().split('T')[0]!, inRange: true }
+        : { date: '', inRange: false },
+      );
+      cur.setDate(cur.getDate() + 1);
     }
     grid.push(col);
   }
 
-  // Month labels: find first column where month changes
+  // Month labels — show only when month changes and there's room
   const monthLabels: Array<{ col: number; label: string }> = [];
   let lastMonth = -1;
   for (let c = 0; c < grid.length; c++) {
-    const firstDay = grid[c]?.[0];
-    if (firstDay?.inRange && firstDay.date) {
-      const m = new Date(firstDay.date + 'T00:00:00').getMonth();
-      if (m !== lastMonth) {
-        monthLabels.push({ col: c, label: new Date(firstDay.date + 'T00:00:00').toLocaleString('en', { month: 'short' }) });
+    const cell = grid[c]?.[0];
+    if (cell?.inRange && cell.date) {
+      const m = new Date(cell.date + 'T12:00:00').getMonth();
+      if (m !== lastMonth && c < grid.length - 1) {
+        monthLabels.push({ col: c, label: new Date(cell.date + 'T12:00:00').toLocaleString('en', { month: 'short' }) });
         lastMonth = m;
       }
     }
   }
 
-  const color = (mins: number) => {
-    if (mins === 0) return 'rgba(255,255,255,0.05)';
-    if (mins < 15) return 'rgba(59,130,246,0.18)';
-    if (mins < 45) return 'rgba(59,130,246,0.38)';
-    if (mins < 90) return 'rgba(59,130,246,0.62)';
+  const color = (mins: number, done: number) => {
+    if (mins === 0 && done === 0) return 'rgba(255,255,255,0.06)';
+    if (mins < 15) return 'rgba(59,130,246,0.2)';
+    if (mins < 45) return 'rgba(59,130,246,0.42)';
+    if (mins < 90) return 'rgba(59,130,246,0.68)';
     return '#3B82F6';
   };
 
-  const CELL = 11;
-  const GAP = 2;
-  const LABEL_W = 22;
+  const fmtDate = (d: string) =>
+    new Date(d + 'T12:00:00').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  const DAY_LABELS = ['Mon', '', 'Wed', '', 'Fri', '', ''];
 
   return (
     <div className="card p-5 mb-6">
-      <div className="flex items-center justify-between mb-4">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-5">
         <div>
           <p className="text-sm font-medium">
             {totalMinutes > 0
-              ? `${Math.round(totalMinutes / 60)}h ${totalMinutes % 60}m focused over ${totalDays} day${totalDays !== 1 ? 's' : ''}`
+              ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m focused`
               : 'No focus sessions yet'}
           </p>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>Last 16 weeks</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+            {activeDays > 0 ? `${activeDays} active day${activeDays !== 1 ? 's' : ''} · ` : ''}Last 16 weeks
+          </p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--subtle)' }}>
+        {/* Less / More legend */}
+        <div className="flex items-center gap-1 text-xs shrink-0" style={{ color: 'var(--subtle)' }}>
           <span>Less</span>
           {[0, 14, 44, 89, 120].map((m) => (
-            <div key={m} className="w-2.5 h-2.5 rounded-sm" style={{ background: color(m) }} />
+            <div
+              key={m}
+              style={{
+                width: 11, height: 11, borderRadius: 2,
+                background: color(m, m > 0 ? 1 : 0),
+              }}
+            />
           ))}
           <span>More</span>
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'inline-block', minWidth: 'max-content' }}>
-          {/* Month labels */}
-          <div style={{ display: 'flex', paddingLeft: LABEL_W, marginBottom: 4, height: 14 }}>
-            {grid.map((_, c) => {
-              const lbl = monthLabels.find((l) => l.col === c);
-              return (
-                <div key={c} style={{ width: CELL + GAP, fontSize: 10, color: 'var(--subtle)', whiteSpace: 'nowrap' }}>
-                  {lbl ? lbl.label : ''}
-                </div>
-              );
-            })}
+      {/* Grid — fills full card width */}
+      <div style={{ width: '100%' }}>
+        {/* Month labels row */}
+        <div style={{ display: 'flex', marginLeft: 28, marginBottom: 4, gap: 2 }}>
+          {grid.map((_, c) => {
+            const lbl = monthLabels.find((l) => l.col === c);
+            return (
+              <div key={c} style={{ flex: 1, fontSize: 10, color: 'var(--subtle)', overflow: 'hidden' }}>
+                {lbl?.label ?? ''}
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ display: 'flex', gap: 0, alignItems: 'flex-start' }}>
+          {/* Day labels */}
+          <div style={{ width: 26, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 0 }}>
+            {DAY_LABELS.map((lbl, i) => (
+              <div
+                key={i}
+                style={{
+                  height: 11, fontSize: 9, color: 'var(--subtle)',
+                  textAlign: 'right', paddingRight: 4, lineHeight: '11px',
+                }}
+              >
+                {lbl}
+              </div>
+            ))}
           </div>
 
-          <div style={{ display: 'flex', gap: 0 }}>
-            {/* Day labels */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, marginRight: GAP, width: LABEL_W - GAP }}>
-              {['Mon', '', 'Wed', '', 'Fri', '', ''].map((lbl, i) => (
-                <div key={i} style={{ height: CELL, fontSize: 9, color: 'var(--subtle)', lineHeight: `${CELL}px`, textAlign: 'right' }}>
-                  {lbl}
-                </div>
-              ))}
-            </div>
-
-            {/* Grid */}
+          {/* Week columns — flex stretch to fill */}
+          <div style={{ flex: 1, display: 'flex', gap: 2 }}>
             {grid.map((col, c) => (
-              <div key={c} style={{ display: 'flex', flexDirection: 'column', gap: GAP, marginRight: GAP }}>
+              <div key={c} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {col.map((cell, r) => {
-                  if (!cell.inRange || !cell.date) {
-                    return <div key={r} style={{ width: CELL, height: CELL }} />;
-                  }
-                  const data = byDay.get(cell.date);
+                  const data = cell.inRange ? byDay.get(cell.date) : undefined;
                   const mins = data?.focus_minutes ?? 0;
+                  const done = data?.tasks_done ?? 0;
                   return (
                     <div
                       key={r}
-                      style={{ width: CELL, height: CELL, borderRadius: 2, background: color(mins), cursor: 'default', position: 'relative' }}
-                      onMouseEnter={(e) => {
-                        const rect = (e.target as HTMLElement).getBoundingClientRect();
-                        setTooltip({ day: cell.date, focus_minutes: mins, tasks_done: data?.tasks_done ?? 0, x: rect.left + rect.width / 2, y: rect.top });
+                      style={{
+                        height: 11,
+                        borderRadius: 2,
+                        background: cell.inRange ? color(mins, done) : 'transparent',
+                        cursor: cell.inRange ? 'default' : 'default',
                       }}
-                      onMouseLeave={() => setTooltip(null)}
+                      onMouseEnter={cell.inRange ? (e) => {
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        setTooltip({
+                          day: cell.date,
+                          focus_minutes: mins,
+                          tasks_done: done,
+                          session_count: data?.session_count ?? 0,
+                          x: rect.left + rect.width / 2,
+                          y: rect.top,
+                        });
+                      } : undefined}
+                      onMouseLeave={cell.inRange ? () => setTooltip(null) : undefined}
                     />
                   );
                 })}
@@ -371,34 +397,50 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
         </div>
       </div>
 
-      {/* Tooltip */}
+      {/* Tooltip — fixed, above cursor */}
       {tooltip && (
         <div
           style={{
             position: 'fixed',
             left: tooltip.x,
-            top: tooltip.y - 8,
+            top: tooltip.y - 10,
             transform: 'translate(-50%, -100%)',
-            background: 'var(--surface-2)',
-            border: '1px solid var(--border)',
-            borderRadius: 6,
-            padding: '5px 8px',
+            background: '#1a1a1f',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 7,
+            padding: '6px 10px',
             fontSize: 11,
             color: 'var(--text)',
             pointerEvents: 'none',
-            zIndex: 100,
+            zIndex: 1000,
             whiteSpace: 'nowrap',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
           }}
         >
-          <span style={{ color: 'var(--muted)' }}>{tooltip.day}</span>
-          {tooltip.focus_minutes > 0 && (
-            <span> · {tooltip.focus_minutes}m focus</span>
-          )}
-          {tooltip.tasks_done > 0 && (
-            <span style={{ color: '#22C55E' }}> · {tooltip.tasks_done} done</span>
-          )}
-          {tooltip.focus_minutes === 0 && tooltip.tasks_done === 0 && (
-            <span style={{ color: 'var(--subtle)' }}> · No activity</span>
+          <div style={{ color: 'var(--muted)', marginBottom: 3 }}>{fmtDate(tooltip.day)}</div>
+          {tooltip.focus_minutes === 0 && tooltip.tasks_done === 0 ? (
+            <div style={{ color: 'var(--subtle)' }}>No activity</div>
+          ) : (
+            <>
+              {tooltip.focus_minutes > 0 && (
+                <div>
+                  <span style={{ color: 'var(--accent)' }}>
+                    {tooltip.focus_minutes >= 60
+                      ? `${Math.floor(tooltip.focus_minutes / 60)}h ${tooltip.focus_minutes % 60}m`
+                      : `${tooltip.focus_minutes}m`}
+                  </span>
+                  <span style={{ color: 'var(--subtle)' }}>
+                    {' '}focus · {tooltip.session_count} session{tooltip.session_count !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+              {tooltip.tasks_done > 0 && (
+                <div>
+                  <span style={{ color: '#22C55E' }}>{tooltip.tasks_done} task{tooltip.tasks_done !== 1 ? 's' : ''}</span>
+                  <span style={{ color: 'var(--subtle)' }}> completed</span>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
