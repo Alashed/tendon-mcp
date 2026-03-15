@@ -265,7 +265,29 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
   for (const d of days) byDay.set(d.day, d);
 
   const totalMinutes = days.reduce((s, d) => s + d.focus_minutes, 0);
+  const totalDone = days.reduce((s, d) => s + d.tasks_done, 0);
   const activeDays = days.filter((d) => d.focus_minutes > 0 || d.tasks_done > 0).length;
+
+  // Longest streak
+  const longestStreak = (() => {
+    let best = 0, cur = 0;
+    const sorted = [...days].sort((a, b) => a.day.localeCompare(b.day));
+    for (const d of sorted) {
+      if (d.focus_minutes > 0 || d.tasks_done > 0) { cur++; best = Math.max(best, cur); }
+      else cur = 0;
+    }
+    return best;
+  })();
+
+  // Stat block color — one blue hue, 5 levels of intensity
+  const statColor = (value: number, max: number) => {
+    const ratio = Math.min(value / Math.max(max, 1), 1);
+    if (ratio === 0)  return { bg: 'rgba(59,130,246,0.06)',  text: 'rgba(255,255,255,0.25)' };
+    if (ratio < 0.2)  return { bg: 'rgba(59,130,246,0.12)', text: 'rgba(147,197,253,0.7)' };
+    if (ratio < 0.45) return { bg: 'rgba(59,130,246,0.22)', text: '#93C5FD' };
+    if (ratio < 0.75) return { bg: 'rgba(59,130,246,0.38)', text: '#60A5FA' };
+    return { bg: 'rgba(59,130,246,0.55)', text: '#3B82F6' };
+  };
 
   // Build grid: col = week, row = Mon(0)..Sun(6)
   const today = new Date();
@@ -457,6 +479,54 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
           )}
         </div>
       )}
+
+      {/* ── Stats row ── */}
+      <div className="grid grid-cols-4 gap-2 mt-5">
+        {[
+          {
+            label: 'Focus time',
+            value: totalMinutes >= 60
+              ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
+              : `${totalMinutes}m`,
+            sub: `${weeks}w total`,
+            c: statColor(totalMinutes, 3000),
+          },
+          {
+            label: 'Tasks done',
+            value: String(totalDone),
+            sub: totalDone === 1 ? 'task' : 'tasks',
+            c: statColor(totalDone, 100),
+          },
+          {
+            label: 'Active days',
+            value: String(activeDays),
+            sub: `of ${weeks * 7} days`,
+            c: statColor(activeDays, weeks * 7 * 0.5),
+          },
+          {
+            label: 'Best streak',
+            value: `${longestStreak}d`,
+            sub: longestStreak > 0 ? 'in a row' : 'no streak yet',
+            c: statColor(longestStreak, 14),
+          },
+        ].map(({ label, value, sub, c }) => (
+          <div
+            key={label}
+            style={{
+              background: c.bg,
+              border: `1px solid ${c.bg.replace('0.06', '0.15').replace('0.12', '0.2').replace('0.22', '0.3').replace('0.38', '0.45').replace('0.55', '0.6')}`,
+              borderRadius: 8,
+              padding: '10px 12px',
+            }}
+          >
+            <div style={{ fontSize: 18, fontWeight: 700, color: c.text, lineHeight: 1, fontFamily: 'var(--font-syne)' }}>
+              {value}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--subtle)', marginTop: 4 }}>{label}</div>
+            <div style={{ fontSize: 9, color: 'var(--subtle)', opacity: 0.6, marginTop: 1 }}>{sub}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
