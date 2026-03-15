@@ -38,6 +38,7 @@ export const config = {
   webBaseUrl: optional('WEB_BASE_URL', 'http://localhost:3000'),
   clerkSecretKey: optional('CLERK_SECRET_KEY', ''),
   telegramBotToken: optional('TELEGRAM_BOT_TOKEN', ''),
+  telegramBotUsername: optional('TELEGRAM_BOT_USERNAME', ''),
 } as const;
 
 export function validateConfig(): void {

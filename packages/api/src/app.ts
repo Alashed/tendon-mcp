@@ -24,7 +24,20 @@ export async function buildApp(): Promise<FastifyInstance> {
     credentials: true,
   });
   await app.register(jwt, { secret: config.jwt.secret });
-  await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
+  await app.register(rateLimit, {
+    max: 200,
+    timeWindow: '1 minute',
+    // Behind nginx all requests share the same IP — key by token instead
+    keyGenerator: (request) => {
+      const auth = request.headers['authorization'];
+      if (auth?.startsWith('Bearer ')) return auth.slice(7, 48); // first 41 chars of token
+      return request.ip;
+    },
+    skipOnError: true,
+    // SSE connections must not be rate-limited (long-lived GET /mcp)
+    skip: (request) => request.method === 'GET' && request.url.startsWith('/mcp'),
+    errorResponseBuilder: () => ({ error: 'Too many requests — slow down', retryAfter: 60 }),
+  });
   await app.register(formbody);
   await app.register(swagger, {
     openapi: {

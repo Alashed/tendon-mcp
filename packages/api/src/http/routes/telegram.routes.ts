@@ -1,9 +1,24 @@
 import type { FastifyInstance } from 'fastify';
 import { getContainer } from '../../di/container.js';
 import { verifyAndUpsertClerkUser } from '../../shared/clerk/clerkAuth.js';
+import { authenticate } from '../middleware/auth.js';
+import { config } from '../../config/index.js';
 
 export async function telegramRoutes(app: FastifyInstance): Promise<void> {
   const { userRepository, workspaceRepository } = getContainer();
+
+  // ── GET /telegram/status — connection status for current user's workspace ─
+  app.get('/telegram/status', { preHandler: authenticate }, async (request) => {
+    const { telegramRepository } = getContainer();
+    const chats = await telegramRepository.findChatsByWorkspace(request.user.workspace_id);
+    return {
+      data: {
+        connected: chats.length > 0,
+        chats: chats.map(c => ({ label: c.label, report_hour: c.report_hour })),
+        bot_username: config.telegramBotUsername || null,
+      },
+    };
+  });
 
   // ── POST /telegram/webhook — receive updates from Telegram ──────────────
   app.post('/telegram/webhook', async (request, reply) => {

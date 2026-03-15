@@ -20,6 +20,8 @@ export default function SettingsPage() {
   const [claudeConnected, setClaudeConnected] = useState<boolean | null>(null);
   const [plan, setPlan] = useState<string>('free');
   const [loading, setLoading] = useState(true);
+  const [tgConnected, setTgConnected] = useState(false);
+  const [tgBotUsername, setTgBotUsername] = useState<string | null>(null);
 
   // Create team workspace
   const [newTeamName, setNewTeamName] = useState('');
@@ -40,9 +42,10 @@ export default function SettingsPage() {
       const token = await getToken();
       if (!token) { setLoading(false); return; }
       try {
-        const [meRes, claudeRes] = await Promise.all([
+        const [meRes, claudeRes, tgRes] = await Promise.all([
           fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }),
           fetch(`${API_URL}/auth/claude-status`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${API_URL}/telegram/status`, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
         if (meRes.ok) {
           const { data } = await meRes.json();
@@ -52,6 +55,11 @@ export default function SettingsPage() {
           const { data } = await claudeRes.json();
           setClaudeConnected(data.connected);
           setPlan(data.plan ?? 'free');
+        }
+        if (tgRes.ok) {
+          const { data } = await tgRes.json();
+          setTgConnected(data.connected);
+          setTgBotUsername(data.bot_username ?? null);
         }
       } catch { /* ignore */ } finally {
         setLoading(false);
@@ -262,8 +270,27 @@ export default function SettingsPage() {
                 <path d="M21 5L2 12.5l7 1M21 5l-5.5 15-3.5-6M21 5L9 13.5" stroke="#3B82F6" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </div>
-            <div>
-              <p className="text-sm font-medium mb-1">Daily digest & standup reports</p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="text-sm font-medium">Daily digest & standup reports</p>
+                {!loading && tgConnected && (
+                  <span
+                    className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full shrink-0"
+                    style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.2)' }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22C55E' }} />
+                    Connected
+                  </span>
+                )}
+                {!loading && !tgConnected && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--subtle)', border: '1px solid rgba(255,255,255,0.07)' }}
+                  >
+                    Not connected
+                  </span>
+                )}
+              </div>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--muted)' }}>
                 Connect your Telegram chat to receive daily summaries — what you built,
                 how long you focused, what&apos;s next. Teams get per-member reports in a shared chat.
@@ -271,34 +298,70 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div
-            className="rounded-lg p-4 mb-4"
-            style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <p className="text-xs font-medium mb-3" style={{ color: 'var(--muted)' }}>How to connect:</p>
-            <div className="space-y-2">
-              {[
-                { num: '1', text: 'Open the Tendon bot in Telegram' },
-                { num: '2', text: 'Send /connect — the bot replies with a link' },
-                { num: '3', text: 'Click the link — your chat is linked to this workspace' },
-              ].map(({ num, text }) => (
-                <div key={num} className="flex items-center gap-3 text-xs" style={{ color: 'var(--muted)' }}>
-                  <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs"
-                    style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent)' }}
-                  >
-                    {num}
-                  </span>
-                  {text}
-                </div>
-              ))}
+          {tgConnected ? (
+            <div
+              className="rounded-lg px-4 py-3 flex items-center justify-between"
+              style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid rgba(34,197,94,0.15)' }}
+            >
+              <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                Chat connected — you&apos;ll receive daily digests automatically.
+              </p>
+              {tgBotUsername && (
+                <a
+                  href={`https://t.me/${tgBotUsername}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs shrink-0 ml-3"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  Open bot →
+                </a>
+              )}
             </div>
-          </div>
+          ) : (
+            <>
+              <div
+                className="rounded-lg p-4 mb-4"
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <p className="text-xs font-medium mb-3" style={{ color: 'var(--muted)' }}>How to connect:</p>
+                <div className="space-y-2">
+                  {[
+                    { num: '1', text: tgBotUsername ? `Open @${tgBotUsername} in Telegram` : 'Open the Tendon bot in Telegram' },
+                    { num: '2', text: 'Send /connect — the bot replies with a link' },
+                    { num: '3', text: 'Click the link — your chat is linked to this workspace' },
+                  ].map(({ num, text }) => (
+                    <div key={num} className="flex items-center gap-3 text-xs" style={{ color: 'var(--muted)' }}>
+                      <span
+                        className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs"
+                        style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent)' }}
+                      >
+                        {num}
+                      </span>
+                      {text}
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          <p className="text-xs" style={{ color: 'var(--subtle)' }}>
-            For a team chat: add the bot to your group and send{' '}
-            <code style={{ color: 'var(--muted)' }}>/connect</code> there.
-          </p>
+              {tgBotUsername && (
+                <a
+                  href={`https://t.me/${tgBotUsername}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm border transition-all"
+                  style={{ borderColor: 'rgba(59,130,246,0.2)', color: 'var(--accent)', background: 'rgba(59,130,246,0.04)' }}
+                >
+                  Open @{tgBotUsername} →
+                </a>
+              )}
+
+              <p className="text-xs mt-3" style={{ color: 'var(--subtle)' }}>
+                For a team chat: add the bot to your group and send{' '}
+                <code style={{ color: 'var(--muted)' }}>/connect</code> there.
+              </p>
+            </>
+          )}
         </div>
       </section>
 
