@@ -69,6 +69,12 @@ export class TelegramService {
       await this.handleConnect(chatId, threadId, msg.chat.title ?? msg.from?.first_name ?? '');
     } else if (text.startsWith('/today')) {
       await this.handleToday(chatId, threadId);
+    } else if (text.startsWith('/week')) {
+      await this.handleWeek(chatId, threadId);
+    } else if (text.startsWith('/plan')) {
+      await this.handlePlan(chatId, threadId);
+    } else if (text.startsWith('/focus')) {
+      await this.handleFocus(chatId, threadId);
     } else if (text.startsWith('/help')) {
       await this.sendMessage(chatId, this.helpText(), threadId);
     }
@@ -105,6 +111,76 @@ export class TelegramService {
     ]);
 
     await this.sendMessage(chatId, this.buildReport(today, stats, tasks), threadId);
+  }
+
+  private async handleWeek(chatId: number, threadId: number | null): Promise<void> {
+    const workspaceId = await this.repo.findWorkspaceByChatId(chatId);
+    if (!workspaceId) {
+      await this.sendMessage(chatId, '⚠️ Not connected. Use /connect first.', threadId);
+      return;
+    }
+    const rows = await this.repo.getWeekStats(workspaceId);
+    if (!rows.length) {
+      await this.sendMessage(chatId, '○ No activity in the last 7 days.', threadId);
+      return;
+    }
+    const totalMins = rows.reduce((s, r) => s + r.total_minutes, 0);
+    const totalDone = rows.reduce((s, r) => s + r.done_count, 0);
+    const best = rows.reduce((a, b) => b.total_minutes > a.total_minutes ? b : a);
+    const lines: string[] = [`📅 <b>Last 7 days</b>`, ''];
+    for (const r of rows) {
+      const d = new Date(r.date + 'T12:00:00Z').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
+      const bar = '█'.repeat(Math.min(Math.floor(r.total_minutes / 60), 6));
+      const done = r.done_count > 0 ? `  ✓${r.done_count}` : '';
+      lines.push(`  <code>${d.padEnd(12)}</code> ${fmt(r.total_minutes).padStart(6)} ${bar}${done}`);
+    }
+    lines.push('');
+    lines.push(`⏱ Total: <b>${fmt(totalMins)}</b>  ·  ✓ Done: <b>${totalDone}</b>`);
+    lines.push(`★ Best: ${new Date(best.date + 'T12:00:00Z').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })} (${fmt(best.total_minutes)})`);
+    await this.sendMessage(chatId, lines.join('\n'), threadId);
+  }
+
+  private async handlePlan(chatId: number, threadId: number | null): Promise<void> {
+    const workspaceId = await this.repo.findWorkspaceByChatId(chatId);
+    if (!workspaceId) {
+      await this.sendMessage(chatId, '⚠️ Not connected. Use /connect first.', threadId);
+      return;
+    }
+    const tasks = await this.repo.getPlannedTasks(workspaceId);
+    if (!tasks.length) {
+      await this.sendMessage(chatId, '○ No planned tasks. All clear!', threadId);
+      return;
+    }
+    const prio: Record<string, string> = { high: '🔴', medium: '🟡', low: '⚪' };
+    const lines = [`📋 <b>Planned tasks (${tasks.length})</b>`, ''];
+    for (const t of tasks) {
+      lines.push(`  ${prio[t.priority] ?? '⚪'} ${t.title}`);
+    }
+    await this.sendMessage(chatId, lines.join('\n'), threadId);
+  }
+
+  private async handleFocus(chatId: number, threadId: number | null): Promise<void> {
+    const workspaceId = await this.repo.findWorkspaceByChatId(chatId);
+    if (!workspaceId) {
+      await this.sendMessage(chatId, '⚠️ Not connected. Use /connect first.', threadId);
+      return;
+    }
+    const session = await this.repo.getActiveSession(workspaceId);
+    if (!session) {
+      await this.sendMessage(chatId, '○ No active focus session right now.', threadId);
+      return;
+    }
+    const since = new Date(session.since);
+    const mins = Math.round((Date.now() - since.getTime()) / 60000);
+    const sinceStr = since.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
+    const lines = [
+      `▶ <b>Focus in progress</b>`,
+      '',
+      `  Who  : ${session.user_name}`,
+      session.task_title ? `  Task : ${session.task_title}` : `  Task : General focus`,
+      `  Since: ${sinceStr}  (${fmt(mins)} ago)`,
+    ];
+    await this.sendMessage(chatId, lines.join('\n'), threadId);
   }
 
   // ── Daily report ─────────────────────────────────────────────────────────
@@ -173,8 +249,11 @@ export class TelegramService {
     return [
       `<b>tendon tracker bot</b>`,
       '',
+      `/today — today's focus time and tasks`,
+      `/plan — planned tasks list`,
+      `/focus — current active session`,
+      `/week — last 7 days summary`,
       `/connect — link this chat to your workspace`,
-      `/today — show today's summary`,
       `/help — show this message`,
     ].join('\n');
   }

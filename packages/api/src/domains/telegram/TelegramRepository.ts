@@ -156,6 +156,55 @@ export class TelegramRepository {
     return result.rows;
   }
 
+  async getWeekStats(workspaceId: string): Promise<Array<{ date: string; total_minutes: number; done_count: number }>> {
+    const result = await query<{ date: string; total_minutes: number; done_count: number }>(
+      `SELECT
+         DATE(a.start_time)::TEXT AS date,
+         COALESCE(SUM(EXTRACT(EPOCH FROM (COALESCE(a.end_time, NOW()) - a.start_time)) / 60)::INT, 0) AS total_minutes,
+         COALESCE((
+           SELECT COUNT(*) FROM tasks t
+           WHERE t.workspace_id = $1
+             AND t.status = 'done'
+             AND DATE(t.updated_at) = DATE(a.start_time)
+         ), 0)::INT AS done_count
+       FROM activities a
+       WHERE a.workspace_id = $1
+         AND a.start_time >= NOW() - INTERVAL '7 days'
+       GROUP BY DATE(a.start_time)
+       ORDER BY date DESC`,
+      [workspaceId],
+    );
+    return result.rows;
+  }
+
+  async getPlannedTasks(workspaceId: string): Promise<Array<{ title: string; priority: string }>> {
+    const result = await query<{ title: string; priority: string }>(
+      `SELECT title, priority FROM tasks
+       WHERE workspace_id = $1 AND status = 'planned'
+       ORDER BY CASE priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, created_at
+       LIMIT 10`,
+      [workspaceId],
+    );
+    return result.rows;
+  }
+
+  async getActiveSession(workspaceId: string): Promise<{ user_name: string; task_title: string | null; since: string } | null> {
+    const result = await query<{ user_name: string; task_title: string | null; since: string }>(
+      `SELECT
+         COALESCE(u.name, u.email) AS user_name,
+         t.title AS task_title,
+         a.start_time::TEXT AS since
+       FROM activities a
+       JOIN users u ON u.id = a.user_id
+       LEFT JOIN tasks t ON t.id = a.task_id
+       WHERE a.workspace_id = $1 AND a.end_time IS NULL
+       ORDER BY a.start_time DESC
+       LIMIT 1`,
+      [workspaceId],
+    );
+    return result.rows[0] ?? null;
+  }
+
   async getTaskSummary(workspaceId: string): Promise<{ total: number; in_progress: number; done_today: number }> {
     const today = new Date().toISOString().split('T')[0];
     const result = await query<{ total: number; in_progress: number; done_today: number }>(

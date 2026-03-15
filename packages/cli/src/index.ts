@@ -10,9 +10,8 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..', '..', '..');
 const API_PORT = 3001;
-const MCP_PORT = 3002;
 const API_URL = `http://localhost:${API_PORT}`;
-const MCP_URL = `http://localhost:${MCP_PORT}/mcp`;
+const MCP_URL = `http://localhost:${API_PORT}/mcp`;
 
 // ── ASCII banner ──────────────────────────────────────────────────────────────
 
@@ -150,19 +149,15 @@ async function flowManual(
     `PORT=${API_PORT}`,
     `API_BASE_URL=${API_URL}`,
     `WEB_BASE_URL=${API_URL}`,
-    `MCP_BASE_URL=${MCP_URL}`,
     `CORS_ORIGINS=http://localhost:3000`,
     `NODE_ENV=production`,
   ].join('\n');
   writeFileSync(apiEnvPath, envContent);
 
-  const mcpEnvPath = join(REPO_ROOT, 'packages', 'mcp', '.env');
-  writeFileSync(mcpEnvPath, `ALASHED_API_URL=${API_URL}\nMCP_BASE_URL=${MCP_URL}\nPORT=${MCP_PORT}\n`);
-
   // Build if needed
   s.start('Building packages…');
   try {
-    execSync('npm run build:shared && npm run build:api && npm run build:mcp', {
+    execSync('npm run build:shared && npm run build:api', {
       cwd: REPO_ROOT,
       stdio: 'ignore',
     });
@@ -185,7 +180,7 @@ async function flowManual(
   }
   s.stop('Migrations complete');
 
-  // Start API
+  // Start API (MCP is built-in at /mcp)
   s.start('Starting API…');
   const apiProc = spawn('node', ['dist/server.js'], {
     cwd: join(REPO_ROOT, 'packages', 'api'),
@@ -193,14 +188,6 @@ async function flowManual(
     stdio: 'ignore',
   });
   apiProc.unref();
-
-  // Start MCP
-  const mcpProc = spawn('node', ['dist/index.js'], {
-    cwd: join(REPO_ROOT, 'packages', 'mcp'),
-    detached: true,
-    stdio: 'ignore',
-  });
-  mcpProc.unref();
 
   const ready = await waitForApi();
   if (!ready) {
@@ -218,7 +205,7 @@ async function flowManual(
   mkdirSync(pidDir, { recursive: true });
   writeFileSync(
     join(pidDir, 'pids.json'),
-    JSON.stringify({ api: apiProc.pid, mcp: mcpProc.pid }, null, 2),
+    JSON.stringify({ api: apiProc.pid }, null, 2),
   );
 
   printSuccess(email);
