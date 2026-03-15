@@ -5,23 +5,24 @@ export interface CreateUserDTO {
   email: string;
   name: string;
   password_hash?: string;
+  password_argon2?: string;
   clerk_user_id?: string;
 }
 
 export class UserRepository {
   async create(dto: CreateUserDTO): Promise<User> {
     const result = await query<User>(
-      `INSERT INTO users (email, name, password_hash, clerk_user_id)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO users (email, name, password_hash, password_argon2, clerk_user_id)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING id, email, name, telegram_id, created_at, updated_at`,
-      [dto.email, dto.name, dto.password_hash ?? '', dto.clerk_user_id ?? null],
+      [dto.email, dto.name, dto.password_hash ?? '', dto.password_argon2 ?? null, dto.clerk_user_id ?? null],
     );
     return result.rows[0]!;
   }
 
-  async findByEmail(email: string): Promise<(User & { password_hash: string }) | null> {
-    const result = await query<User & { password_hash: string }>(
-      `SELECT id, email, name, telegram_id, password_hash, created_at, updated_at
+  async findByEmail(email: string): Promise<(User & { password_hash: string; password_argon2: string | null }) | null> {
+    const result = await query<User & { password_hash: string; password_argon2: string | null }>(
+      `SELECT id, email, name, telegram_id, password_hash, password_argon2, created_at, updated_at
        FROM users WHERE email = $1`,
       [email],
     );

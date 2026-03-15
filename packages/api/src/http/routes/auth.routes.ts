@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { createHash } from 'crypto';
+import argon2 from 'argon2';
 import { z } from 'zod';
 import { getContainer } from '../../di/container.js';
 import { ConflictError, UnauthorizedError } from '../../shared/errors/AppError.js';
@@ -13,7 +14,7 @@ declare module '@fastify/jwt' {
   }
 }
 
-function hashPassword(password: string): string {
+function sha256Hash(password: string): string {
   return createHash('sha256').update(password).digest('hex');
 }
 
@@ -40,7 +41,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const user = await userRepository.create({
       email: body.email,
       name: body.name,
-      password_hash: hashPassword(body.password),
+      password_hash: sha256Hash(body.password),
+      password_argon2: await argon2.hash(body.password),
     });
 
     const workspace = await workspaceRepository.createPersonal(user.id, `${body.name}'s workspace`);
@@ -53,9 +55,22 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const body = LoginSchema.parse(request.body);
 
     const user = await userRepository.findByEmail(body.email);
-    if (!user || user.password_hash !== hashPassword(body.password)) {
-      throw new UnauthorizedError('Invalid credentials');
+    if (!user) throw new UnauthorizedError('Invalid credentials');
+
+    // Verify password — prefer argon2 (new), fall back to SHA256 (legacy)
+    let passwordOk = false;
+    if (user.password_argon2) {
+      passwordOk = await argon2.verify(user.password_argon2, body.password);
+    } else {
+      passwordOk = user.password_hash === sha256Hash(body.password);
+      // Lazy migration: upgrade to argon2 on successful SHA256 login
+      if (passwordOk) {
+        const argon2Hash = await argon2.hash(body.password);
+        await query('UPDATE users SET password_argon2 = $1 WHERE id = $2', [argon2Hash, user.id]);
+      }
     }
+
+    if (!passwordOk) throw new UnauthorizedError('Invalid credentials');
 
     // Get personal workspace
     const workspaces = await workspaceRepository.listForUser(user.id);

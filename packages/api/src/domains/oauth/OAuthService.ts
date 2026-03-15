@@ -1,12 +1,18 @@
 import { createHash } from 'crypto';
+import argon2 from 'argon2';
 import { OAuthRepository } from './OAuthRepository.js';
 import { UserRepository } from '../users/UserRepository.js';
 import { WorkspaceRepository } from '../workspaces/WorkspaceRepository.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import type { OAuthAccessToken } from './types.js';
 
-function hashPassword(p: string): string {
+function sha256Hash(p: string): string {
   return createHash('sha256').update(p).digest('hex');
+}
+
+async function verifyPassword(stored: { password_hash: string; password_argon2: string | null }, plain: string): Promise<boolean> {
+  if (stored.password_argon2) return argon2.verify(stored.password_argon2, plain);
+  return stored.password_hash === sha256Hash(plain);
 }
 
 function verifyPKCE(verifier: string, challenge: string): boolean {
@@ -81,7 +87,7 @@ export class OAuthService {
 
     // Authenticate user (legacy email/password flow)
     const user = await this.userRepo.findByEmail(params.email ?? '');
-    if (!user || user.password_hash !== hashPassword(params.password ?? '')) {
+    if (!user || !(await verifyPassword(user, params.password ?? ''))) {
       throw new AppError(401, 'Invalid email or password');
     }
 
