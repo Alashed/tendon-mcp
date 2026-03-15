@@ -43,29 +43,39 @@ export class TaskRepository {
   }
 
   async findById(id: string): Promise<Task | null> {
-    const result = await query<Task>('SELECT * FROM tasks WHERE id = $1', [id]);
+    const result = await query<Task>(
+      `SELECT t.*, p.name AS project_name
+       FROM tasks t
+       LEFT JOIN projects p ON p.id = t.project_id
+       WHERE t.id = $1`,
+      [id],
+    );
     return result.rows[0] ?? null;
   }
 
   async list(filter: ListTasksFilter): Promise<Task[]> {
-    const conditions: string[] = ['workspace_id = $1', "status != 'archived'"];
+    const conditions: string[] = ['t.workspace_id = $1', "t.status != 'archived'"];
     const params: unknown[] = [filter.workspace_id];
 
     if (filter.status) {
       params.push(filter.status);
-      conditions.push(`status = $${params.length}`);
+      conditions.push(`t.status = $${params.length}`);
     }
     if (filter.assignee_id) {
       params.push(filter.assignee_id);
-      conditions.push(`assignee_id = $${params.length}`);
+      conditions.push(`t.assignee_id = $${params.length}`);
     }
     if (filter.project_id) {
       params.push(filter.project_id);
-      conditions.push(`project_id = $${params.length}`);
+      conditions.push(`t.project_id = $${params.length}`);
     }
 
     const result = await query<Task>(
-      `SELECT * FROM tasks WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC`,
+      `SELECT t.*, p.name AS project_name
+       FROM tasks t
+       LEFT JOIN projects p ON p.id = t.project_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY t.created_at DESC`,
       params,
     );
     return result.rows;

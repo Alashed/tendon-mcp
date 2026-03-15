@@ -93,9 +93,16 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
       description: z.string().optional().describe('Optional description'),
       priority: z.enum(['low', 'medium', 'high']).optional().describe('Priority (default: medium)'),
       due_date: z.string().optional().describe('Due date YYYY-MM-DD'),
-      project_id: z.string().optional().describe('Project UUID'),
+      project: z.string().optional().describe('Repository or project name (e.g. "tendon-mcp", "my-app"). Creates the project automatically if it does not exist.'),
     },
-    async ({ title, description, priority, due_date, project_id }) => {
+    async ({ title, description, priority, due_date, project }) => {
+      let project_id: string | undefined;
+      if (project) {
+        try {
+          const proj = await api.post<{ id: string }>('/projects', { workspace_id: workspaceId, name: project });
+          project_id = proj.id;
+        } catch { /* ignore */ }
+      }
       const task = await api.post<Task>('/tasks', {
         workspace_id: workspaceId,
         title, description, priority, due_date, project_id,
@@ -108,6 +115,7 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
         `   Status   : ${task.status}`,
         `   ID       : ${task.id}`,
       ];
+      if ((task as any).project_name) lines.push(`   Project  : ${(task as any).project_name}`);
       if (task.due_date) lines.push(`   Due      : ${task.due_date}`);
       return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
     },
@@ -120,15 +128,21 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
       status: z.enum(['planned', 'in_progress', 'done']).optional().describe('Filter by status'),
     },
     async ({ status }) => {
-      const tasks = await api.get<Task[]>(`/tasks?workspace_id=${workspaceId}${status ? `&status=${status}` : ''}`);
-      if (!tasks.length) {
+      const rawTasks = await api.get<Array<Task & { project_name?: string }>>(`/tasks?workspace_id=${workspaceId}${status ? `&status=${status}` : ''}`);
+      if (!rawTasks.length) {
         return { content: [{ type: 'text' as const, text: '○  No tasks found.' }] };
       }
+
+      const taskWithProject = (t: Task & { project_name?: string }) => ({
+        ...t,
+        title: t.project_name ? `${t.title}  [${t.project_name}]` : t.title,
+      });
+      const tasks = rawTasks.map(taskWithProject);
 
       const label = status ? `${STATUS_ICON[status] ?? '○'} ${status.toUpperCase().replace('_', ' ')} (${tasks.length})` : `Tasks  (${tasks.length})`;
       const lines = [header(label)];
 
-      const grouped: Record<string, Task[]> = { in_progress: [], planned: [], done: [] };
+      const grouped: Record<string, typeof tasks> = { in_progress: [], planned: [], done: [] };
       for (const t of tasks) {
         (grouped[t.status] ?? grouped['planned']!).push(t);
       }
@@ -227,11 +241,18 @@ export function registerTools(server: McpServer, api: ApiClient, workspaceId: st
       const today = new Date().toISOString().split('T')[0]!;
       const dayLabel = new Date().toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
 
-      const [inProgress, planned, activities] = await Promise.all([
-        api.get<Task[]>(`/tasks?workspace_id=${workspaceId}&status=in_progress`),
-        api.get<Task[]>(`/tasks?workspace_id=${workspaceId}&status=planned`),
+      const [rawInProgress, rawPlanned, activities] = await Promise.all([
+        api.get<Array<Task & { project_name?: string }>>(`/tasks?workspace_id=${workspaceId}&status=in_progress`),
+        api.get<Array<Task & { project_name?: string }>>(`/tasks?workspace_id=${workspaceId}&status=planned`),
         api.get<Activity[]>(`/activities?workspace_id=${workspaceId}&date=${today}`),
       ]);
+
+      const taskWithProject = (t: Task & { project_name?: string }) => ({
+        ...t,
+        title: t.project_name ? `${t.title}  [${t.project_name}]` : t.title,
+      });
+      const inProgress = rawInProgress.map(taskWithProject);
+      const planned = rawPlanned.map(taskWithProject);
 
       const totalMins = activities.reduce((sum, a) => {
         const end = a.end_time ? new Date(a.end_time) : new Date();

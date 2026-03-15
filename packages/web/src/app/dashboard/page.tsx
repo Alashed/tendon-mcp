@@ -427,6 +427,8 @@ export default function DashboardPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [claudeConnected, setClaudeConnected] = useState<boolean | null>(null);
   const [plan, setPlan] = useState<string>('free');
+  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
+  const [projectFilter, setProjectFilter] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Live timer tick
@@ -477,12 +479,16 @@ export default function DashboardPage() {
     if (!token || !wsId) return;
     setLoading(true);
     try {
-      const [list, acts] = await Promise.all([
+      const [list, acts, projs] = await Promise.all([
         getTasks(wsId, token),
         getActivities(wsId, token),
+        fetch(`${API_URL}/projects?workspace_id=${wsId}`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.ok ? r.json() : { data: [] })
+          .then(b => b.data),
       ]);
       setTasks(list);
       setActivities(acts);
+      setProjects(projs);
       const ongoing = acts.find((a) => !a.end_time) ?? null;
       setActiveSession(ongoing);
     } catch { /* ignore */ } finally {
@@ -557,9 +563,13 @@ export default function DashboardPage() {
   };
 
   const filtered = tasks.filter((t) => {
-    if (filter === 'active') return t.status !== 'done' && t.status !== 'archived';
-    if (filter === 'done') return t.status === 'done';
-    return t.status !== 'archived';
+    const matchesFilter = filter === 'active'
+      ? t.status !== 'done' && t.status !== 'archived'
+      : filter === 'done'
+      ? t.status === 'done'
+      : t.status !== 'archived';
+    const matchesProject = projectFilter === null || (t as any).project_id === projectFilter;
+    return matchesFilter && matchesProject;
   });
 
   const counts = {
@@ -897,6 +907,39 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* ── Project filter ────────────────────── */}
+        {projects.length > 0 && (
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+            <button
+              onClick={() => setProjectFilter(null)}
+              className="px-2.5 py-1 rounded text-xs transition-all"
+              style={{
+                background: projectFilter === null ? 'var(--surface-2)' : 'transparent',
+                color: projectFilter === null ? 'var(--text)' : 'var(--subtle)',
+                border: '1px solid',
+                borderColor: projectFilter === null ? 'rgba(59,130,246,0.3)' : 'transparent',
+              }}
+            >
+              All
+            </button>
+            {projects.map(p => (
+              <button
+                key={p.id}
+                onClick={() => setProjectFilter(p.id === projectFilter ? null : p.id)}
+                className="px-2.5 py-1 rounded text-xs transition-all"
+                style={{
+                  background: projectFilter === p.id ? 'rgba(59,130,246,0.1)' : 'transparent',
+                  color: projectFilter === p.id ? 'var(--accent)' : 'var(--subtle)',
+                  border: '1px solid',
+                  borderColor: projectFilter === p.id ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.06)',
+                }}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* ── Task list ─────────────────────────── */}
         {loading ? (
           <div className="space-y-2">
@@ -940,6 +983,11 @@ export default function DashboardPage() {
                     >
                       {task.title}
                     </p>
+                    {(task as any).project_name && (
+                      <span className="text-xs mt-0.5 block" style={{ color: 'var(--subtle)' }}>
+                        {(task as any).project_name}
+                      </span>
+                    )}
                   </div>
 
                   {task.priority && (

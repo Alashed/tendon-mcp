@@ -8,6 +8,7 @@ import { telegramRoutes } from './telegram.routes.js';
 import { reportRoutes } from './reports.routes.js';
 import { inviteRoutes } from './invites.routes.js';
 import { mcpRoutes } from '../../mcp/routes.js';
+import { projectRoutes } from './projects.routes.js';
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(oauthRoutes);
@@ -15,6 +16,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(taskRoutes);
   await app.register(activityRoutes);
   await app.register(workspaceRoutes);
+  await app.register(projectRoutes);
   await app.register(telegramRoutes);
   await app.register(reportRoutes);
   await app.register(inviteRoutes);

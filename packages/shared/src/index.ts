@@ -47,6 +47,7 @@ export interface Task {
   id: string;
   workspace_id: string;
   project_id?: string;
+  project_name?: string;
   title: string;
   description?: string;
   status: TaskStatus;
