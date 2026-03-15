@@ -1,13 +1,11 @@
 module.exports = {
   apps: [{
     name: 'tendon-web',
-    script: 'node',
-    args: 'server.js',
-    cwd: '/home/ubuntu/apps/alashed-tracker/packages/web/.next/standalone',
+    script: 'server.js',
+    cwd: '/home/ubuntu/apps/alashed-web/packages/web',
     env: {
       NODE_ENV: 'production',
-      PORT: 3000,
-      NEXT_PUBLIC_API_URL: 'https://api.tendon.alashed.kz',
+      PORT: 3030,
       HOSTNAME: '0.0.0.0',
     },
   }],
