@@ -229,10 +229,16 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
     day: string; focus_minutes: number; tasks_done: number; session_count: number;
     x: number; y: number;
   } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [cellSize, setCellSize] = useState(11);
+
+  const WEEKS = 24;
+  const GAP = 3;
+  const LABEL_W = 28;
 
   useEffect(() => {
     if (!workspaceId || !token) return;
-    fetch(`${API_URL}/reports/heatmap?workspace_id=${workspaceId}&weeks=16`, {
+    fetch(`${API_URL}/reports/heatmap?workspace_id=${workspaceId}&weeks=${WEEKS}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.ok ? r.json() : null)
@@ -240,24 +246,36 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
       .catch(() => {});
   }, [workspaceId, token]);
 
+  // Measure container and compute square cell size
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => {
+      const totalGaps = (WEEKS - 1) * GAP;
+      const available = el.offsetWidth - LABEL_W - totalGaps;
+      const size = Math.floor(available / WEEKS);
+      setCellSize(Math.max(8, Math.min(16, size)));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const byDay = new Map<string, HeatDay>();
   for (const d of days) byDay.set(d.day, d);
 
   const totalMinutes = days.reduce((s, d) => s + d.focus_minutes, 0);
   const activeDays = days.filter((d) => d.focus_minutes > 0 || d.tasks_done > 0).length;
 
-  // Build 16-week grid starting from Monday
-  const WEEKS = 16;
+  // Build grid: col = week, row = Mon(0)..Sun(6)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
   const startDate = new Date(today);
   startDate.setDate(startDate.getDate() - WEEKS * 7);
   const dow = startDate.getDay();
-  const toMon = dow === 0 ? 1 : dow === 1 ? 0 : 8 - dow;
-  startDate.setDate(startDate.getDate() + toMon);
+  startDate.setDate(startDate.getDate() + (dow === 0 ? 1 : dow === 1 ? 0 : 8 - dow));
 
-  // grid[col][row] — col = week, row = Mon(0)..Sun(6)
   const grid: Array<Array<{ date: string; inRange: boolean }>> = [];
   const cur = new Date(startDate);
   while (cur <= today) {
@@ -272,14 +290,14 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
     grid.push(col);
   }
 
-  // Month labels — show only when month changes and there's room
+  // Month labels
   const monthLabels: Array<{ col: number; label: string }> = [];
   let lastMonth = -1;
   for (let c = 0; c < grid.length; c++) {
     const cell = grid[c]?.[0];
     if (cell?.inRange && cell.date) {
       const m = new Date(cell.date + 'T12:00:00').getMonth();
-      if (m !== lastMonth && c < grid.length - 1) {
+      if (m !== lastMonth) {
         monthLabels.push({ col: c, label: new Date(cell.date + 'T12:00:00').toLocaleString('en', { month: 'short' }) });
         lastMonth = m;
       }
@@ -288,9 +306,9 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
 
   const color = (mins: number, done: number) => {
     if (mins === 0 && done === 0) return 'rgba(255,255,255,0.06)';
-    if (mins < 15) return 'rgba(59,130,246,0.2)';
-    if (mins < 45) return 'rgba(59,130,246,0.42)';
-    if (mins < 90) return 'rgba(59,130,246,0.68)';
+    if (mins < 15) return 'rgba(59,130,246,0.22)';
+    if (mins < 45) return 'rgba(59,130,246,0.45)';
+    if (mins < 90) return 'rgba(59,130,246,0.7)';
     return '#3B82F6';
   };
 
@@ -310,48 +328,46 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
               : 'No focus sessions yet'}
           </p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-            {activeDays > 0 ? `${activeDays} active day${activeDays !== 1 ? 's' : ''} · ` : ''}Last 16 weeks
+            {activeDays > 0 ? `${activeDays} active day${activeDays !== 1 ? 's' : ''} · ` : ''}Last {WEEKS} weeks
           </p>
         </div>
-        {/* Less / More legend */}
-        <div className="flex items-center gap-1 text-xs shrink-0" style={{ color: 'var(--subtle)' }}>
+        <div className="flex items-center gap-1.5 text-xs shrink-0" style={{ color: 'var(--subtle)' }}>
           <span>Less</span>
           {[0, 14, 44, 89, 120].map((m) => (
-            <div
-              key={m}
-              style={{
-                width: 11, height: 11, borderRadius: 2,
-                background: color(m, m > 0 ? 1 : 0),
-              }}
-            />
+            <div key={m} style={{ width: 11, height: 11, borderRadius: 2, background: color(m, m > 0 ? 1 : 0) }} />
           ))}
           <span>More</span>
         </div>
       </div>
 
-      {/* Grid — fills full card width */}
-      <div style={{ width: '100%' }}>
-        {/* Month labels row */}
-        <div style={{ display: 'flex', marginLeft: 28, marginBottom: 4, gap: 2 }}>
+      {/* Grid */}
+      <div ref={containerRef} style={{ width: '100%' }}>
+        {/* Month labels */}
+        <div style={{ display: 'flex', marginLeft: LABEL_W, marginBottom: 4 }}>
           {grid.map((_, c) => {
             const lbl = monthLabels.find((l) => l.col === c);
             return (
-              <div key={c} style={{ flex: 1, fontSize: 10, color: 'var(--subtle)', overflow: 'hidden' }}>
+              <div
+                key={c}
+                style={{ width: cellSize + GAP, flexShrink: 0, fontSize: 10, color: 'var(--subtle)', overflow: 'hidden', whiteSpace: 'nowrap' }}
+              >
                 {lbl?.label ?? ''}
               </div>
             );
           })}
         </div>
 
-        <div style={{ display: 'flex', gap: 0, alignItems: 'flex-start' }}>
-          {/* Day labels */}
-          <div style={{ width: 26, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 2, paddingTop: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+          {/* Day labels — height matches cell */}
+          <div style={{ width: LABEL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: GAP }}>
             {DAY_LABELS.map((lbl, i) => (
               <div
                 key={i}
                 style={{
-                  height: 11, fontSize: 9, color: 'var(--subtle)',
-                  textAlign: 'right', paddingRight: 4, lineHeight: '11px',
+                  height: cellSize, width: LABEL_W,
+                  fontSize: 9, color: 'var(--subtle)',
+                  textAlign: 'right', paddingRight: 5,
+                  lineHeight: `${cellSize}px`,
                 }}
               >
                 {lbl}
@@ -359,10 +375,10 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
             ))}
           </div>
 
-          {/* Week columns — flex stretch to fill */}
-          <div style={{ flex: 1, display: 'flex', gap: 2 }}>
+          {/* Week columns — fixed cell size, perfectly square */}
+          <div style={{ display: 'flex', gap: GAP }}>
             {grid.map((col, c) => (
-              <div key={c} style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div key={c} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
                 {col.map((cell, r) => {
                   const data = cell.inRange ? byDay.get(cell.date) : undefined;
                   const mins = data?.focus_minutes ?? 0;
@@ -371,20 +387,18 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
                     <div
                       key={r}
                       style={{
-                        height: 11,
-                        borderRadius: 2,
+                        width: cellSize,
+                        height: cellSize,
+                        borderRadius: Math.max(2, Math.floor(cellSize / 5)),
                         background: cell.inRange ? color(mins, done) : 'transparent',
-                        cursor: cell.inRange ? 'default' : 'default',
+                        flexShrink: 0,
                       }}
                       onMouseEnter={cell.inRange ? (e) => {
                         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                         setTooltip({
-                          day: cell.date,
-                          focus_minutes: mins,
-                          tasks_done: done,
+                          day: cell.date, focus_minutes: mins, tasks_done: done,
                           session_count: data?.session_count ?? 0,
-                          x: rect.left + rect.width / 2,
-                          y: rect.top,
+                          x: rect.left + rect.width / 2, y: rect.top,
                         });
                       } : undefined}
                       onMouseLeave={cell.inRange ? () => setTooltip(null) : undefined}
@@ -397,7 +411,7 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
         </div>
       </div>
 
-      {/* Tooltip — fixed, above cursor */}
+      {/* Tooltip */}
       {tooltip && (
         <div
           style={{
