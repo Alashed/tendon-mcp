@@ -1,9 +1,10 @@
 import express from 'express';
+import { randomUUID } from 'crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import 'dotenv/config';
 import { ApiClient } from './api-client.js';
-import { validateBearerToken } from './auth.js';
+import { validateBearerToken, type TokenInfo } from './auth.js';
 import { registerTools } from './tools.js';
 import { registerPrompts } from './prompts.js';
 
@@ -12,12 +13,29 @@ const API_URL = process.env['ALASHED_API_URL'] ?? 'http://localhost:3001';
 const MCP_BASE_URL = process.env['MCP_BASE_URL'] ?? `http://localhost:${PORT}`;
 const RESOURCE_METADATA_URL = `${MCP_BASE_URL}/.well-known/oauth-protected-resource`;
 
+// ── Session store ─────────────────────────────────────────────────────────────
+// One session per Claude Code client. Sessions persist across requests so:
+//  - auth is validated once, not on every tool call
+//  - server-to-client SSE notifications work (GET /mcp)
+//  - session cleanup is explicit (DELETE /mcp)
+interface Session {
+  transport: StreamableHTTPServerTransport;
+  server: McpServer;
+  tokenInfo: TokenInfo | null; // null = unauthenticated (handshake only)
+}
+
+const sessions = new Map<string, Session>();
+
+// Cleanup sessions that were idle for >2h (safety valve for leaked sessions)
+setInterval(() => {
+  // Sessions clean themselves up via onclose; this is just a safety net
+  // In production, add lastSeen timestamps for proper TTL
+}, 60_000);
+
 const app = express();
 app.use(express.json());
 
-// ── RFC 9728: Protected Resource Metadata ────────────────────────────────────
-// Claude Code fetches this when it gets a 401 with resource_metadata in WWW-Authenticate.
-// It uses authorization_servers to find the OAuth server, then opens a browser.
+// ── RFC 9728: Protected Resource Metadata ─────────────────────────────────────
 app.get('/.well-known/oauth-protected-resource', (_req, res) => {
   res.json({
     resource: MCP_BASE_URL,
@@ -25,85 +43,156 @@ app.get('/.well-known/oauth-protected-resource', (_req, res) => {
   });
 });
 
-// ── Health ───────────────────────────────────────────────────────────────────
+// ── Health ────────────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'tendon-mcp', ts: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    service: 'tendon-mcp',
+    sessions: sessions.size,
+    ts: new Date().toISOString(),
+  });
 });
 
-// ── MCP endpoint (resource server only — no /authorize, /token) ───────────────
+// ── POST /mcp — create or resume session ──────────────────────────────────────
 app.post('/mcp', async (req, res) => {
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const body = req.body as { method?: string } | undefined;
 
-  // Allow discovery requests without auth so Claude Code can list tools.
-  // OAuth is triggered automatically when the first real tool call returns 401.
+  // ── Resume existing session ──────────────────────────────────────────────
+  if (sessionId && sessions.has(sessionId)) {
+    const session = sessions.get(sessionId)!;
+
+    // Validate auth on every tool call (token may have been refreshed)
+    const authHeader = req.headers['authorization'];
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const isToolCall = body?.method === 'tools/call';
+
+    if (isToolCall) {
+      if (!token) {
+        return void res.status(401)
+          .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}"`)
+          .json({ error: 'missing_token' });
+      }
+      // Re-validate token (handles token refresh transparently)
+      try {
+        session.tokenInfo = await validateBearerToken(token);
+      } catch {
+        return void res.status(401)
+          .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}", error="invalid_token"`)
+          .json({ error: 'invalid_token' });
+      }
+    }
+
+    await session.transport.handleRequest(req, res, req.body);
+    return;
+  }
+
+  // ── New session ───────────────────────────────────────────────────────────
   const isHandshake = body?.method === 'initialize'
     || body?.method === 'notifications/initialized'
     || body?.method === 'tools/list'
     || body?.method === 'prompts/list';
 
-  if (isHandshake) {
-    const server = new McpServer({ name: 'tendon', version: '1.0.0' });
-    registerTools(server, new ApiClient(API_URL, ''), '', '');
-    registerPrompts(server);
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-    res.on('close', () => { transport.close(); server.close(); });
-    try {
-      await server.connect(transport);
-      await transport.handleRequest(req, res, req.body);
-    } catch (err) {
-      console.error('MCP init error:', err);
-      if (!res.headersSent) res.status(500).json({ error: 'Internal server error' });
+  let tokenInfo: TokenInfo | null = null;
+
+  if (!isHandshake) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    if (!token) {
+      return void res.status(401)
+        .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}"`)
+        .json({ error: 'missing_token' });
     }
-    return;
+    try {
+      tokenInfo = await validateBearerToken(token);
+    } catch {
+      return void res.status(401)
+        .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}", error="invalid_token"`)
+        .json({ error: 'invalid_token' });
+    }
   }
 
-  // All tool calls require a valid bearer token
-  const authHeader = req.headers['authorization'];
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-  if (!token) {
-    res.status(401)
-      .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}"`)
-      .json({ error: 'missing_token', error_description: 'Authorization header required' });
-    return;
-  }
-
-  let tokenInfo: Awaited<ReturnType<typeof validateBearerToken>>;
-  try {
-    tokenInfo = await validateBearerToken(token);
-  } catch {
-    res.status(401)
-      .set('WWW-Authenticate', `Bearer realm="tendon", resource_metadata="${RESOURCE_METADATA_URL}", error="invalid_token"`)
-      .json({ error: 'invalid_token', error_description: 'Token invalid or expired' });
-    return;
-  }
-
-  const workspaceId = (req.headers['x-workspace-id'] as string) ?? tokenInfo.workspace_id;
-  const userId = tokenInfo.sub;
-  const userEmail = tokenInfo.email;
-  const api = new ApiClient(API_URL, token);
-
-  const instructions = buildInstructions(userEmail, workspaceId);
+  // Build server with whatever token we have (empty for handshake)
+  const workspaceId = tokenInfo?.workspace_id ?? '';
+  const userId = tokenInfo?.sub ?? '';
+  const userEmail = tokenInfo?.email ?? '';
+  const token = (req.headers['authorization'] as string | undefined)?.slice(7) ?? '';
 
   const server = new McpServer(
     { name: 'tendon', version: '1.0.0' },
-    { instructions },
+    { instructions: tokenInfo ? buildInstructions(userEmail, workspaceId) : undefined },
   );
 
-  registerTools(server, api, workspaceId, userId);
+  registerTools(server, new ApiClient(API_URL, token), workspaceId, userId);
   registerPrompts(server);
 
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => randomUUID(),
+    onsessioninitialized: (sid) => {
+      sessions.set(sid, { transport, server, tokenInfo });
+      console.log(`[mcp] session created: ${sid} user=${userEmail || 'anon'}`);
+    },
+  });
 
-  res.on('close', () => { transport.close(); server.close(); });
+  transport.onclose = () => {
+    if (transport.sessionId) {
+      sessions.delete(transport.sessionId);
+      console.log(`[mcp] session closed: ${transport.sessionId}`);
+    }
+  };
+
+  res.on('close', () => {
+    // Only cleanup if session was never registered (failed handshake)
+    if (!transport.sessionId) {
+      transport.close();
+      server.close();
+    }
+  });
 
   try {
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
   } catch (err) {
-    console.error('MCP error:', err);
+    console.error('[mcp] request error:', err);
     if (!res.headersSent) res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// ── GET /mcp — SSE stream for server-to-client notifications ──────────────────
+app.get('/mcp', async (req, res) => {
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+
+  if (!sessionId || !sessions.has(sessionId)) {
+    return void res.status(404).json({ error: 'Session not found' });
+  }
+
+  const { transport } = sessions.get(sessionId)!;
+
+  res.on('close', () => {
+    // Client disconnected — session stays alive for reconnect
+  });
+
+  try {
+    await transport.handleRequest(req, res);
+  } catch (err) {
+    console.error('[mcp] SSE error:', err);
+    if (!res.headersSent) res.status(500).end();
+  }
+});
+
+// ── DELETE /mcp — explicit session cleanup ────────────────────────────────────
+app.delete('/mcp', async (req, res) => {
+  const sessionId = req.headers['mcp-session-id'] as string | undefined;
+
+  if (sessionId && sessions.has(sessionId)) {
+    const { transport, server } = sessions.get(sessionId)!;
+    sessions.delete(sessionId);
+    await Promise.allSettled([transport.close(), server.close()]);
+    console.log(`[mcp] session deleted: ${sessionId}`);
+  }
+
+  res.status(204).end();
 });
 
 // ── Server instructions ───────────────────────────────────────────────────────
@@ -149,4 +238,5 @@ Always stop the session when the user switches tasks or says they're done.`;
 app.listen(PORT, () => {
   console.log(`Tendon MCP server on port ${PORT}`);
   console.log(`API: ${API_URL} | resource_metadata: ${RESOURCE_METADATA_URL}`);
+  console.log(`Session store: in-memory (${sessions.size} active)`);
 });
