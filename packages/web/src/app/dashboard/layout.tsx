@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { UserButton } from '@clerk/nextjs';
+import { UserButton, useAuth } from '@clerk/nextjs';
+import { useState, useEffect } from 'react';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
 
 const NAV = [
   {
@@ -67,6 +70,18 @@ const NAV = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { getToken } = useAuth();
+  const [claudeConnected, setClaudeConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    getToken().then((token) => {
+      if (!token) return;
+      fetch(`${API_URL}/auth/claude-status`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => r.ok ? r.json() : null)
+        .then((body) => { if (body?.data) setClaudeConnected(body.data.connected); })
+        .catch(() => {});
+    });
+  }, [getToken]);
 
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
@@ -104,18 +119,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             );
           })}
 
-          <div className="pt-2 border-t mt-2" style={{ borderColor: 'var(--border)' }}>
-            <Link
-              href="/onboarding"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all"
-              style={{ color: 'var(--accent)', opacity: 0.8 }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              Connect Claude
-            </Link>
-          </div>
+          {claudeConnected === false && (
+            <div className="pt-2 border-t mt-2" style={{ borderColor: 'var(--border)' }}>
+              <Link
+                href="/onboarding"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all"
+                style={{ color: 'var(--accent)', opacity: 0.8 }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                  <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Connect Claude
+              </Link>
+            </div>
+          )}
         </nav>
 
         {/* User */}
