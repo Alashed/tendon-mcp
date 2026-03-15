@@ -230,37 +230,36 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
     x: number; y: number;
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [cellSize, setCellSize] = useState(11);
-
-  const WEEKS = 24;
-  const GAP = 3;
+  // Fixed GitHub-like cell size; weeks count is derived from container width
+  const CELL = 11;
+  const GAP = 2;
   const LABEL_W = 28;
+  const MAX_WEEKS = 52;
+  const [weeks, setWeeks] = useState(24);
 
-  useEffect(() => {
-    if (!workspaceId || !token) return;
-    fetch(`${API_URL}/reports/heatmap?workspace_id=${workspaceId}&weeks=${WEEKS}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then((body) => { if (body?.data?.days) setDays(body.data.days); })
-      .catch(() => {});
-  }, [workspaceId, token]);
-
-  // Measure container and compute square cell size
+  // Recompute weeks count when container resizes
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const update = () => {
-      const totalGaps = (WEEKS - 1) * GAP;
-      const available = el.offsetWidth - LABEL_W - totalGaps;
-      const size = Math.floor(available / WEEKS);
-      setCellSize(Math.max(8, Math.min(16, size)));
+      const w = Math.floor((el.offsetWidth - LABEL_W + GAP) / (CELL + GAP));
+      setWeeks(Math.min(MAX_WEEKS, Math.max(12, w)));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!workspaceId || !token || weeks < 1) return;
+    fetch(`${API_URL}/reports/heatmap?workspace_id=${workspaceId}&weeks=${weeks}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((body) => { if (body?.data?.days) setDays(body.data.days); })
+      .catch(() => {});
+  }, [workspaceId, token, weeks]);
 
   const byDay = new Map<string, HeatDay>();
   for (const d of days) byDay.set(d.day, d);
@@ -272,7 +271,7 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const startDate = new Date(today);
-  startDate.setDate(startDate.getDate() - WEEKS * 7);
+  startDate.setDate(startDate.getDate() - weeks * 7);
   const dow = startDate.getDay();
   startDate.setDate(startDate.getDate() + (dow === 0 ? 1 : dow === 1 ? 0 : 8 - dow));
 
@@ -328,7 +327,7 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
               : 'No focus sessions yet'}
           </p>
           <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-            {activeDays > 0 ? `${activeDays} active day${activeDays !== 1 ? 's' : ''} · ` : ''}Last {WEEKS} weeks
+            {activeDays > 0 ? `${activeDays} active day${activeDays !== 1 ? 's' : ''} · ` : ''}Last {weeks} weeks
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-xs shrink-0" style={{ color: 'var(--subtle)' }}>
@@ -349,7 +348,7 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
             return (
               <div
                 key={c}
-                style={{ width: cellSize + GAP, flexShrink: 0, fontSize: 10, color: 'var(--subtle)', overflow: 'hidden', whiteSpace: 'nowrap' }}
+                style={{ width: CELL + GAP, flexShrink: 0, fontSize: 10, color: 'var(--subtle)', overflow: 'hidden', whiteSpace: 'nowrap' }}
               >
                 {lbl?.label ?? ''}
               </div>
@@ -358,16 +357,16 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
         </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-start' }}>
-          {/* Day labels — height matches cell */}
+          {/* Day labels */}
           <div style={{ width: LABEL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: GAP }}>
             {DAY_LABELS.map((lbl, i) => (
               <div
                 key={i}
                 style={{
-                  height: cellSize, width: LABEL_W,
+                  height: CELL, width: LABEL_W,
                   fontSize: 9, color: 'var(--subtle)',
                   textAlign: 'right', paddingRight: 5,
-                  lineHeight: `${cellSize}px`,
+                  lineHeight: `${CELL}px`,
                 }}
               >
                 {lbl}
@@ -375,7 +374,7 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
             ))}
           </div>
 
-          {/* Week columns — fixed cell size, perfectly square */}
+          {/* Week columns — fixed CELL size, perfectly square */}
           <div style={{ display: 'flex', gap: GAP }}>
             {grid.map((col, c) => (
               <div key={c} style={{ display: 'flex', flexDirection: 'column', gap: GAP }}>
@@ -387,9 +386,9 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
                     <div
                       key={r}
                       style={{
-                        width: cellSize,
-                        height: cellSize,
-                        borderRadius: Math.max(2, Math.floor(cellSize / 5)),
+                        width: CELL,
+                        height: CELL,
+                        borderRadius: 2,
                         background: cell.inRange ? color(mins, done) : 'transparent',
                         flexShrink: 0,
                       }}
