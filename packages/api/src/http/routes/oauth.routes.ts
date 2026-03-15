@@ -203,105 +203,294 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
   <title>Connect Claude Code — Tendon</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080809;
+      --surface: #0f0f12;
+      --border: rgba(255,255,255,0.07);
+      --border-hover: rgba(255,255,255,0.13);
+      --text: #e8e8ec;
+      --muted: #6b6b78;
+      --subtle: #3a3a44;
+      --accent: #e8b84b;
+      --accent-dim: rgba(232,184,75,0.12);
+      --accent-border: rgba(232,184,75,0.3);
+      --blue: #4f8ef7;
+      --blue-dim: rgba(79,142,247,0.08);
+      --blue-border: rgba(79,142,247,0.2);
+      --red-dim: rgba(239,68,68,0.08);
+      --red-border: rgba(239,68,68,0.2);
+      --red-text: #fca5a5;
+      --success: #34d399;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0c0c10; color: #e4e4e7;
-      min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 24px;
     }
+
+    /* Subtle grid background */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* Glow */
+    body::after {
+      content: '';
+      position: fixed; top: -20%; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 400px; pointer-events: none;
+      background: radial-gradient(ellipse, rgba(232,184,75,0.04) 0%, transparent 70%);
+    }
+
     .card {
-      background: #111115; border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px; padding: 32px; width: 100%; max-width: 380px;
+      position: relative; z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px; padding: 36px 32px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03), 0 24px 48px rgba(0,0,0,0.5);
     }
-    .icon {
-      width: 48px; height: 48px; border-radius: 50%;
-      background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3);
-      display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;
+
+    /* Progress steps */
+    .steps {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; margin-bottom: 28px;
     }
-    h1 { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 6px; }
-    .sub { font-size: 13px; color: #71717a; text-align: center; margin-bottom: 24px; }
+    .step-dot {
+      width: 28px; height: 4px; border-radius: 2px;
+      background: var(--subtle); transition: background 0.3s;
+    }
+    .step-dot.active { background: var(--accent); }
+    .step-dot.done { background: var(--success); }
+
+    /* Header */
+    .logo {
+      width: 52px; height: 52px; border-radius: 14px;
+      background: var(--accent-dim); border: 1px solid var(--accent-border);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    h1 {
+      font-size: 20px; font-weight: 700; text-align: center;
+      margin-bottom: 6px; letter-spacing: -0.3px;
+    }
+    .sub {
+      font-size: 13px; color: var(--muted); text-align: center;
+      line-height: 1.5; margin-bottom: 28px;
+    }
+
+    /* Connect line */
+    .connect-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 14px; border-radius: 12px;
+      background: var(--blue-dim); border: 1px solid var(--blue-border);
+      margin-bottom: 20px;
+    }
+    .connect-badge {
+      font-size: 11px; font-weight: 600; padding: 2px 8px;
+      border-radius: 4px; white-space: nowrap;
+    }
+    .badge-claude { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+    .badge-tendon { background: var(--accent-dim); color: var(--accent); }
+    .connect-arrow { color: var(--muted); font-size: 14px; flex: 1; text-align: center; }
+
+    /* Permissions */
     .perms {
-      background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.12);
-      border-radius: 10px; padding: 14px; margin-bottom: 20px;
+      border-radius: 12px; padding: 14px 16px;
+      border: 1px solid var(--border); margin-bottom: 20px;
     }
-    .perms p { font-size: 12px; color: #71717a; margin-bottom: 8px; }
-    .perm { font-size: 12px; display: flex; gap: 8px; margin-bottom: 4px; }
-    .perm span:first-child { color: #3b82f6; }
-    label { display: block; font-size: 12px; color: #71717a; margin-bottom: 5px; }
+    .perms-title { font-size: 11px; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .perm {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--text); padding: 4px 0;
+    }
+    .perm-icon {
+      width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0;
+      background: var(--blue-dim); border: 1px solid var(--blue-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; color: var(--blue);
+    }
+
+    /* Form */
+    .field { margin-bottom: 12px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
     input {
-      width: 100%; padding: 10px 12px; background: #18181f;
-      border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-      color: #e4e4e7; font-size: 14px; margin-bottom: 12px; outline: none;
+      width: 100%; padding: 11px 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-size: 14px; outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
-    input:focus { border-color: rgba(59,130,246,0.5); }
-    .btn-allow {
-      width: 100%; padding: 11px; background: #e8b84b; color: #0c0c10;
-      border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
-      cursor: pointer; margin-bottom: 8px;
+    input:focus {
+      border-color: rgba(79,142,247,0.4);
+      box-shadow: 0 0 0 3px rgba(79,142,247,0.08);
     }
-    .btn-allow:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-cancel {
-      width: 100%; padding: 10px; background: none; border: none;
-      color: #52525b; font-size: 13px; cursor: pointer;
-    }
-    .error {
-      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
-      border-radius: 8px; padding: 10px 12px; font-size: 13px; color: #fca5a5;
-      margin-bottom: 12px; display: none;
-    }
-    .step { font-size: 12px; color: #52525b; text-align: center; margin-bottom: 16px; }
-    .ws-list { margin-bottom: 16px; display: none; }
-    .ws-label { font-size: 12px; color: #71717a; margin-bottom: 8px; }
+    input::placeholder { color: var(--subtle); }
+
+    /* Workspace selector */
+    .ws-section { margin-bottom: 16px; display: none; }
+    .ws-title { font-size: 12px; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
     .ws-btn {
       width: 100%; display: flex; align-items: center; gap: 10px;
-      padding: 9px 12px; background: transparent; border-radius: 8px; cursor: pointer;
-      border: 1px solid rgba(255,255,255,0.1); color: #e4e4e7;
-      font-size: 13px; text-align: left; margin-bottom: 6px; transition: border-color 0.15s;
+      padding: 10px 12px; background: transparent;
+      border-radius: 10px; cursor: pointer;
+      border: 1px solid var(--border); color: var(--text);
+      font-size: 13px; text-align: left; margin-bottom: 6px;
+      transition: border-color 0.15s, background 0.15s;
     }
-    .ws-btn.selected { border-color: rgba(59,130,246,0.5); background: rgba(59,130,246,0.06); }
-    .ws-dot { width: 6px; height: 6px; border-radius: 50%; background: #52525b; flex-shrink: 0; }
-    .ws-btn.selected .ws-dot { background: #3b82f6; }
-    .ws-type { font-size: 11px; color: #52525b; margin-left: auto; }
+    .ws-btn:hover { border-color: var(--border-hover); background: rgba(255,255,255,0.02); }
+    .ws-btn.selected { border-color: var(--accent-border); background: var(--accent-dim); }
+    .ws-indicator {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid var(--subtle); transition: all 0.15s;
+    }
+    .ws-btn.selected .ws-indicator { background: var(--accent); border-color: var(--accent); }
+    .ws-tag {
+      margin-left: auto; font-size: 10px; padding: 2px 6px;
+      border-radius: 4px; background: var(--subtle); color: var(--muted);
+    }
+    .ws-btn.selected .ws-tag { background: var(--accent-dim); color: var(--accent); }
+
+    /* Buttons */
+    .btn-primary {
+      width: 100%; padding: 12px; background: var(--accent); color: #0a0a0b;
+      border: none; border-radius: 10px; font-size: 14px; font-weight: 700;
+      cursor: pointer; margin-bottom: 8px; letter-spacing: -0.1px;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-primary:hover:not(:disabled) { opacity: 0.92; }
+    .btn-primary:active:not(:disabled) { transform: scale(0.99); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-secondary {
+      width: 100%; padding: 10px; background: none; border: none;
+      color: var(--muted); font-size: 13px; cursor: pointer;
+      border-radius: 8px; transition: color 0.15s;
+    }
+    .btn-secondary:hover { color: var(--text); }
+
+    /* Error */
+    .error {
+      display: none; align-items: center; gap: 8px;
+      background: var(--red-dim); border: 1px solid var(--red-border);
+      border-radius: 10px; padding: 10px 14px;
+      font-size: 13px; color: var(--red-text); margin-bottom: 14px;
+    }
+    .error.visible { display: flex; }
+
+    /* Loading spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(10,10,11,0.3);
+      border-top-color: #0a0a0b;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+
+    /* Step fade transition */
+    .step-panel { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+    .footer {
+      margin-top: 20px; text-align: center;
+      font-size: 11px; color: var(--subtle);
+    }
+    .footer a { color: var(--muted); text-decoration: none; }
+    .footer a:hover { color: var(--text); }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="icon">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-        <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#3b82f6" stroke-width="2"
+    <!-- Progress -->
+    <div class="steps">
+      <div class="step-dot active" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+    </div>
+
+    <!-- Logo -->
+    <div class="logo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#e8b84b" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
+
     <h1>Connect Claude Code</h1>
-    <p class="sub">Sign in to authorize Claude Code access to your Tendon workspace</p>
+    <p class="sub">Sign in to your Tendon account to authorize<br>Claude Code access to your workspace</p>
 
-    <div id="error" class="error"></div>
-
-    <div id="login-step">
-      <p class="step">Step 1 of 2 — Sign in</p>
-      <label for="email">Email</label>
-      <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
-      <label for="password">Password</label>
-      <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
-      <button class="btn-allow" onclick="login()">Sign in →</button>
-      <button class="btn-cancel" onclick="deny()">Cancel</button>
+    <!-- Error -->
+    <div class="error" id="error">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0">
+        <circle cx="12" cy="12" r="10" stroke="#fca5a5" stroke-width="2"/>
+        <path d="M12 8v4M12 16h.01" stroke="#fca5a5" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span id="error-text"></span>
     </div>
 
-    <div id="allow-step" style="display:none">
-      <p class="step">Step 2 of 2 — Authorize</p>
-      <div class="ws-list" id="ws-list">
-        <p class="ws-label">Connect to workspace:</p>
+    <!-- Step 1: Sign in -->
+    <div id="login-step" class="step-panel">
+      <div class="field">
+        <label for="email">Email address</label>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-primary" id="login-btn" onclick="login()">Continue →</button>
+      <button class="btn-secondary" onclick="deny()">Cancel</button>
+    </div>
+
+    <!-- Step 2: Authorize -->
+    <div id="allow-step" style="display:none" class="step-panel">
+      <!-- Claude ↔ Tendon visual -->
+      <div class="connect-row">
+        <span class="connect-badge badge-claude">Claude Code</span>
+        <span class="connect-arrow">↔</span>
+        <span class="connect-badge badge-tendon">Tendon</span>
+      </div>
+
+      <!-- Workspace selector -->
+      <div class="ws-section" id="ws-section">
+        <p class="ws-title">Connect to workspace</p>
         <div id="ws-buttons"></div>
       </div>
+
+      <!-- Permissions -->
       <div class="perms">
-        <p>Claude will be able to:</p>
-        <div class="perm"><span>✓</span><span>View and create tasks</span></div>
-        <div class="perm"><span>✓</span><span>Log focus sessions and time</span></div>
-        <div class="perm"><span>✓</span><span>Read your workspace plan</span></div>
+        <p class="perms-title">Claude will be able to</p>
+        <div class="perm">
+          <span class="perm-icon">✓</span>
+          <span>View and create tasks</span>
+        </div>
+        <div class="perm">
+          <span class="perm-icon">⏱</span>
+          <span>Log focus sessions and time</span>
+        </div>
+        <div class="perm">
+          <span class="perm-icon">📋</span>
+          <span>Read your daily plan</span>
+        </div>
       </div>
-      <button class="btn-allow" onclick="allow()">Allow access</button>
-      <button class="btn-cancel" onclick="deny()">Cancel</button>
+
+      <button class="btn-primary" id="allow-btn" onclick="allow()">Allow access</button>
+      <button class="btn-secondary" onclick="deny()">Cancel</button>
     </div>
+  </div>
+
+  <div class="footer">
+    Secured by <a href="https://tendon.alashed.kz" target="_blank">Tendon</a> · OAuth 2.1 + PKCE
   </div>
 
   <script>
@@ -311,9 +500,16 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
     let selectedWorkspaceId = null;
 
     function showError(msg) {
-      const el = document.getElementById('error');
-      el.textContent = msg;
-      el.style.display = 'block';
+      document.getElementById('error-text').textContent = msg;
+      document.getElementById('error').classList.add('visible');
+    }
+    function hideError() {
+      document.getElementById('error').classList.remove('visible');
+    }
+
+    function setStep(n) {
+      document.getElementById('dot-1').className = 'step-dot ' + (n >= 1 ? (n > 1 ? 'done' : 'active') : '');
+      document.getElementById('dot-2').className = 'step-dot ' + (n >= 2 ? 'active' : '');
     }
 
     function renderWorkspaces(workspaces) {
@@ -322,8 +518,10 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
       workspaces.forEach(ws => {
         const btn = document.createElement('button');
         btn.className = 'ws-btn' + (ws.id === selectedWorkspaceId ? ' selected' : '');
-        btn.dataset.id = ws.id;
-        btn.innerHTML = '<span class="ws-dot"></span><span>' + ws.name + '</span><span class="ws-type">' + ws.type + '</span>';
+        btn.innerHTML =
+          '<span class="ws-indicator"></span>' +
+          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + ws.name + '</span>' +
+          '<span class="ws-tag">' + ws.type + '</span>';
         btn.onclick = () => {
           selectedWorkspaceId = ws.id;
           document.querySelectorAll('.ws-btn').forEach(b => b.classList.remove('selected'));
@@ -331,7 +529,7 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
         };
         container.appendChild(btn);
       });
-      document.getElementById('ws-list').style.display = 'block';
+      document.getElementById('ws-section').style.display = 'block';
     }
 
     async function login() {
@@ -339,8 +537,10 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
       const password = document.getElementById('password').value;
       if (!email || !password) { showError('Email and password required'); return; }
 
-      document.querySelector('#login-step .btn-allow').disabled = true;
-      document.getElementById('error').style.display = 'none';
+      hideError();
+      const btn = document.getElementById('login-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Signing in…';
 
       try {
         const res = await fetch(API + '/auth/login', {
@@ -350,31 +550,36 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
         });
         const data = await res.json();
         if (!res.ok) { showError(data.error || 'Invalid credentials'); return; }
-        jwt = data.data.token;
 
-        // Load workspaces to show selector if user is in multiple
+        jwt = data.data.token;
         const workspaces = data.data.workspaces ?? [];
         const personal = workspaces.find(w => w.type === 'personal') ?? workspaces[0];
         selectedWorkspaceId = personal?.id ?? null;
         renderWorkspaces(workspaces);
 
+        setStep(2);
         document.getElementById('login-step').style.display = 'none';
-        document.getElementById('allow-step').style.display = 'block';
+        const allowStep = document.getElementById('allow-step');
+        allowStep.style.display = 'block';
+        allowStep.classList.remove('step-panel');
+        void allowStep.offsetWidth;
+        allowStep.classList.add('step-panel');
       } catch {
         showError('Network error — is the API running?');
       } finally {
-        document.querySelector('#login-step .btn-allow').disabled = false;
+        btn.disabled = false;
+        btn.innerHTML = 'Continue →';
       }
     }
 
     async function allow() {
-      document.querySelector('#allow-step .btn-allow').disabled = true;
-      document.getElementById('error').style.display = 'none';
+      hideError();
+      const btn = document.getElementById('allow-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Authorizing…';
 
       try {
-        const body = selectedWorkspaceId
-          ? { ...PARAMS, workspace_id: selectedWorkspaceId }
-          : PARAMS;
+        const body = selectedWorkspaceId ? { ...PARAMS, workspace_id: selectedWorkspaceId } : PARAMS;
         const res = await fetch(API + '/oauth/consent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
@@ -385,28 +590,31 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
           window.location.href = data.redirect_url;
         } else {
           showError(data.error || 'Authorization failed');
+          btn.disabled = false;
+          btn.innerHTML = 'Allow access';
         }
       } catch {
         showError('Network error');
-      } finally {
-        document.querySelector('#allow-step .btn-allow').disabled = false;
+        btn.disabled = false;
+        btn.innerHTML = 'Allow access';
       }
     }
 
     function deny() {
       if (PARAMS.redirect_uri) {
-        const url = new URL(PARAMS.redirect_uri);
-        url.searchParams.set('error', 'access_denied');
-        if (PARAMS.state) url.searchParams.set('state', PARAMS.state);
-        window.location.href = url.toString();
+        try {
+          const url = new URL(PARAMS.redirect_uri);
+          url.searchParams.set('error', 'access_denied');
+          if (PARAMS.state) url.searchParams.set('state', PARAMS.state);
+          window.location.href = url.toString();
+        } catch { window.history.back(); }
       }
     }
 
     document.addEventListener('keydown', e => {
-      if (e.key === 'Enter') {
-        if (document.getElementById('login-step').style.display !== 'none') login();
-        else allow();
-      }
+      if (e.key !== 'Enter') return;
+      if (document.getElementById('login-step').style.display !== 'none') login();
+      else allow();
     });
   </script>
 </body>
