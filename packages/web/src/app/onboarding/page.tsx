@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useUser, useAuth } from '@clerk/nextjs';
 
-const COMMAND = 'claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp';
+const COMMAND = 'claude mcp add --transport http tendon https://api.tendon.alashed.kz/mcp';
 const TEST_PROMPT = 'start my day';
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
 
