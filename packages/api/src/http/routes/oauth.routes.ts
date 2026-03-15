@@ -81,8 +81,8 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
     return reply.header('Content-Type', 'text/html; charset=utf-8').send(html);
   });
 
-  // ── POST /oauth/consent — Issue code after Clerk auth ───────────────────
-  // Called by the web app after user approves in the Clerk-authenticated page
+  // ── POST /oauth/consent — Issue code after Clerk auth or regular JWT ────
+  // Called by the web app (Clerk JWT) or standalone HTML form (Fastify JWT)
   app.post('/oauth/consent', async (request, reply) => {
     const authHeader = request.headers['authorization'];
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -91,11 +91,30 @@ export async function oauthRoutes(app: FastifyInstance): Promise<void> {
 
     const { userRepository, workspaceRepository, oauthService } = getContainer();
 
-    let authResult;
-    try {
-      authResult = await verifyAndUpsertClerkUser(token, userRepository, workspaceRepository);
-    } catch {
-      return reply.status(401).send({ error: 'invalid_token' });
+    let authResult: { user: { id: string }; workspaceId: string } = { user: { id: '' }, workspaceId: '' };
+
+    // Try Clerk JWT first (hosted version)
+    let clerkOk = false;
+    if (token.includes('.') && config.clerkSecretKey) {
+      try {
+        const r = await verifyAndUpsertClerkUser(token, userRepository, workspaceRepository);
+        authResult = r;
+        clerkOk = true;
+      } catch { /* fall through */ }
+    }
+
+    // Fallback: regular Fastify JWT (standalone / self-hosted)
+    if (!clerkOk) {
+      try {
+        const payload = app.jwt.verify<{ sub: string; email: string }>(token);
+        const user = await userRepository.findById(payload.sub);
+        if (!user) return reply.status(401).send({ error: 'invalid_token' });
+        const workspaces = await workspaceRepository.listForUser(user.id);
+        const personal = workspaces.find(w => w.type === 'personal') ?? workspaces[0];
+        authResult = { user, workspaceId: personal?.id ?? '' };
+      } catch {
+        return reply.status(401).send({ error: 'invalid_token' });
+      }
     }
 
     const body = request.body as Record<string, string>;
@@ -231,6 +250,18 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
       margin-bottom: 12px; display: none;
     }
     .step { font-size: 12px; color: #52525b; text-align: center; margin-bottom: 16px; }
+    .ws-list { margin-bottom: 16px; display: none; }
+    .ws-label { font-size: 12px; color: #71717a; margin-bottom: 8px; }
+    .ws-btn {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; background: transparent; border-radius: 8px; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.1); color: #e4e4e7;
+      font-size: 13px; text-align: left; margin-bottom: 6px; transition: border-color 0.15s;
+    }
+    .ws-btn.selected { border-color: rgba(59,130,246,0.5); background: rgba(59,130,246,0.06); }
+    .ws-dot { width: 6px; height: 6px; border-radius: 50%; background: #52525b; flex-shrink: 0; }
+    .ws-btn.selected .ws-dot { background: #3b82f6; }
+    .ws-type { font-size: 11px; color: #52525b; margin-left: auto; }
   </style>
 </head>
 <body>
@@ -243,13 +274,6 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
     </div>
     <h1>Connect Claude Code</h1>
     <p class="sub">Sign in to authorize Claude Code access to your Tendon workspace</p>
-
-    <div class="perms">
-      <p>Claude will be able to:</p>
-      <div class="perm"><span>✓</span><span>View and create tasks</span></div>
-      <div class="perm"><span>✓</span><span>Log focus sessions and time</span></div>
-      <div class="perm"><span>✓</span><span>Read your workspace plan</span></div>
-    </div>
 
     <div id="error" class="error"></div>
 
@@ -265,6 +289,16 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
 
     <div id="allow-step" style="display:none">
       <p class="step">Step 2 of 2 — Authorize</p>
+      <div class="ws-list" id="ws-list">
+        <p class="ws-label">Connect to workspace:</p>
+        <div id="ws-buttons"></div>
+      </div>
+      <div class="perms">
+        <p>Claude will be able to:</p>
+        <div class="perm"><span>✓</span><span>View and create tasks</span></div>
+        <div class="perm"><span>✓</span><span>Log focus sessions and time</span></div>
+        <div class="perm"><span>✓</span><span>Read your workspace plan</span></div>
+      </div>
       <button class="btn-allow" onclick="allow()">Allow access</button>
       <button class="btn-cancel" onclick="deny()">Cancel</button>
     </div>
@@ -274,11 +308,30 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
     const API = '${apiBase}';
     const PARAMS = ${paramsJson};
     let jwt = null;
+    let selectedWorkspaceId = null;
 
     function showError(msg) {
       const el = document.getElementById('error');
       el.textContent = msg;
       el.style.display = 'block';
+    }
+
+    function renderWorkspaces(workspaces) {
+      if (workspaces.length <= 1) return;
+      const container = document.getElementById('ws-buttons');
+      workspaces.forEach(ws => {
+        const btn = document.createElement('button');
+        btn.className = 'ws-btn' + (ws.id === selectedWorkspaceId ? ' selected' : '');
+        btn.dataset.id = ws.id;
+        btn.innerHTML = '<span class="ws-dot"></span><span>' + ws.name + '</span><span class="ws-type">' + ws.type + '</span>';
+        btn.onclick = () => {
+          selectedWorkspaceId = ws.id;
+          document.querySelectorAll('.ws-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        };
+        container.appendChild(btn);
+      });
+      document.getElementById('ws-list').style.display = 'block';
     }
 
     async function login() {
@@ -298,6 +351,13 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
         const data = await res.json();
         if (!res.ok) { showError(data.error || 'Invalid credentials'); return; }
         jwt = data.data.token;
+
+        // Load workspaces to show selector if user is in multiple
+        const workspaces = data.data.workspaces ?? [];
+        const personal = workspaces.find(w => w.type === 'personal') ?? workspaces[0];
+        selectedWorkspaceId = personal?.id ?? null;
+        renderWorkspaces(workspaces);
+
         document.getElementById('login-step').style.display = 'none';
         document.getElementById('allow-step').style.display = 'block';
       } catch {
@@ -312,10 +372,13 @@ function buildConsentHtml(apiBase: string, params: Record<string, string>): stri
       document.getElementById('error').style.display = 'none';
 
       try {
+        const body = selectedWorkspaceId
+          ? { ...PARAMS, workspace_id: selectedWorkspaceId }
+          : PARAMS;
         const res = await fetch(API + '/oauth/consent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt },
-          body: JSON.stringify(PARAMS),
+          body: JSON.stringify(body),
         });
         const data = await res.json();
         if (res.ok && data.redirect_url) {
