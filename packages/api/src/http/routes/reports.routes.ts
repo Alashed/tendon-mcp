@@ -121,4 +121,60 @@ export async function reportRoutes(app: FastifyInstance): Promise<void> {
 
     return { data: { date, workspace_id: qs.workspace_id, users, totals: workspaceTotals } };
   });
+
+  // GET /reports/heatmap?workspace_id=&weeks=16
+  // Returns daily focus_minutes + tasks_done for the last N weeks (for contribution graph)
+  app.get('/reports/heatmap', { preHandler: authenticate }, async (request) => {
+    const qs = request.query as { workspace_id: string; weeks?: string };
+    if (!qs.workspace_id) throw new Error('workspace_id required');
+
+    const member = await workspaceRepository.getMember(qs.workspace_id, request.user.sub);
+    if (!member) throw new ForbiddenError();
+
+    const weeks = Math.min(parseInt(qs.weeks ?? '16', 10), 52);
+
+    const focusResult = await query<{ day: string; focus_minutes: number; session_count: number }>(
+      `SELECT
+         DATE(a.start_time)::TEXT AS day,
+         SUM(EXTRACT(EPOCH FROM (COALESCE(a.end_time, NOW()) - a.start_time)) / 60)::INT AS focus_minutes,
+         COUNT(a.id)::INT AS session_count
+       FROM activities a
+       WHERE a.workspace_id = $1
+         AND a.user_id = $2
+         AND a.start_time >= NOW() - ($3 || ' weeks')::INTERVAL
+       GROUP BY DATE(a.start_time)
+       ORDER BY day ASC`,
+      [qs.workspace_id, request.user.sub, weeks],
+    );
+
+    const doneResult = await query<{ day: string; tasks_done: number }>(
+      `SELECT
+         DATE(updated_at)::TEXT AS day,
+         COUNT(*)::INT AS tasks_done
+       FROM tasks
+       WHERE workspace_id = $1
+         AND created_by = $2
+         AND status = 'done'
+         AND updated_at >= NOW() - ($3 || ' weeks')::INTERVAL
+       GROUP BY DATE(updated_at)
+       ORDER BY day ASC`,
+      [qs.workspace_id, request.user.sub, weeks],
+    );
+
+    // Merge by day
+    const byDay: Record<string, { focus_minutes: number; session_count: number; tasks_done: number }> = {};
+    for (const row of focusResult.rows) {
+      byDay[row.day] = { focus_minutes: row.focus_minutes, session_count: row.session_count, tasks_done: 0 };
+    }
+    for (const row of doneResult.rows) {
+      if (byDay[row.day]) {
+        byDay[row.day]!.tasks_done = row.tasks_done;
+      } else {
+        byDay[row.day] = { focus_minutes: 0, session_count: 0, tasks_done: row.tasks_done };
+      }
+    }
+
+    const days = Object.entries(byDay).map(([day, v]) => ({ day, ...v }));
+    return { data: { weeks, days } };
+  });
 }

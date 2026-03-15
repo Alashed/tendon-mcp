@@ -214,6 +214,198 @@ function InviteModal({
   );
 }
 
+// ── Activity Heatmap ─────────────────────────────────────────────────────────
+
+interface HeatDay {
+  day: string;
+  focus_minutes: number;
+  session_count: number;
+  tasks_done: number;
+}
+
+function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: string }) {
+  const [days, setDays] = useState<HeatDay[]>([]);
+  const [tooltip, setTooltip] = useState<{ day: string; focus_minutes: number; tasks_done: number; x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!workspaceId || !token) return;
+    fetch(`${API_URL}/reports/heatmap?workspace_id=${workspaceId}&weeks=16`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((body) => { if (body?.data?.days) setDays(body.data.days); })
+      .catch(() => {});
+  }, [workspaceId, token]);
+
+  // Build a map of date → data
+  const byDay = new Map<string, HeatDay>();
+  for (const d of days) byDay.set(d.day, d);
+
+  // Total stats
+  const totalMinutes = days.reduce((s, d) => s + d.focus_minutes, 0);
+  const totalDays = days.filter((d) => d.focus_minutes > 0).length;
+
+  // Generate 16 weeks of dates ending today
+  const WEEKS = 16;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Start from Monday of the week 16 weeks ago
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - WEEKS * 7);
+  // Align to Monday
+  const dow = startDate.getDay(); // 0=Sun
+  const daysToMon = dow === 0 ? 1 : (8 - dow) % 7 === 0 ? 0 : (8 - dow) % 7;
+  startDate.setDate(startDate.getDate() + daysToMon);
+
+  // Build grid: columns = weeks, rows = Mon–Sun (0–6)
+  const grid: Array<Array<{ date: string; inRange: boolean }>> = [];
+  const d = new Date(startDate);
+  while (d <= today) {
+    const col: Array<{ date: string; inRange: boolean }> = [];
+    for (let row = 0; row < 7; row++) {
+      if (d <= today) {
+        col.push({ date: d.toISOString().split('T')[0]!, inRange: true });
+      } else {
+        col.push({ date: '', inRange: false });
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    grid.push(col);
+  }
+
+  // Month labels: find first column where month changes
+  const monthLabels: Array<{ col: number; label: string }> = [];
+  let lastMonth = -1;
+  for (let c = 0; c < grid.length; c++) {
+    const firstDay = grid[c]?.[0];
+    if (firstDay?.inRange && firstDay.date) {
+      const m = new Date(firstDay.date + 'T00:00:00').getMonth();
+      if (m !== lastMonth) {
+        monthLabels.push({ col: c, label: new Date(firstDay.date + 'T00:00:00').toLocaleString('en', { month: 'short' }) });
+        lastMonth = m;
+      }
+    }
+  }
+
+  const color = (mins: number) => {
+    if (mins === 0) return 'rgba(255,255,255,0.05)';
+    if (mins < 15) return 'rgba(59,130,246,0.18)';
+    if (mins < 45) return 'rgba(59,130,246,0.38)';
+    if (mins < 90) return 'rgba(59,130,246,0.62)';
+    return '#3B82F6';
+  };
+
+  const CELL = 11;
+  const GAP = 2;
+  const LABEL_W = 22;
+
+  return (
+    <div className="card p-5 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-sm font-medium">
+            {totalMinutes > 0
+              ? `${Math.round(totalMinutes / 60)}h ${totalMinutes % 60}m focused over ${totalDays} day${totalDays !== 1 ? 's' : ''}`
+              : 'No focus sessions yet'}
+          </p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>Last 16 weeks</p>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--subtle)' }}>
+          <span>Less</span>
+          {[0, 14, 44, 89, 120].map((m) => (
+            <div key={m} className="w-2.5 h-2.5 rounded-sm" style={{ background: color(m) }} />
+          ))}
+          <span>More</span>
+        </div>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <div style={{ display: 'inline-block', minWidth: 'max-content' }}>
+          {/* Month labels */}
+          <div style={{ display: 'flex', paddingLeft: LABEL_W, marginBottom: 4, height: 14 }}>
+            {grid.map((_, c) => {
+              const lbl = monthLabels.find((l) => l.col === c);
+              return (
+                <div key={c} style={{ width: CELL + GAP, fontSize: 10, color: 'var(--subtle)', whiteSpace: 'nowrap' }}>
+                  {lbl ? lbl.label : ''}
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', gap: 0 }}>
+            {/* Day labels */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: GAP, marginRight: GAP, width: LABEL_W - GAP }}>
+              {['Mon', '', 'Wed', '', 'Fri', '', ''].map((lbl, i) => (
+                <div key={i} style={{ height: CELL, fontSize: 9, color: 'var(--subtle)', lineHeight: `${CELL}px`, textAlign: 'right' }}>
+                  {lbl}
+                </div>
+              ))}
+            </div>
+
+            {/* Grid */}
+            {grid.map((col, c) => (
+              <div key={c} style={{ display: 'flex', flexDirection: 'column', gap: GAP, marginRight: GAP }}>
+                {col.map((cell, r) => {
+                  if (!cell.inRange || !cell.date) {
+                    return <div key={r} style={{ width: CELL, height: CELL }} />;
+                  }
+                  const data = byDay.get(cell.date);
+                  const mins = data?.focus_minutes ?? 0;
+                  return (
+                    <div
+                      key={r}
+                      style={{ width: CELL, height: CELL, borderRadius: 2, background: color(mins), cursor: 'default', position: 'relative' }}
+                      onMouseEnter={(e) => {
+                        const rect = (e.target as HTMLElement).getBoundingClientRect();
+                        setTooltip({ day: cell.date, focus_minutes: mins, tasks_done: data?.tasks_done ?? 0, x: rect.left + rect.width / 2, y: rect.top });
+                      }}
+                      onMouseLeave={() => setTooltip(null)}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          style={{
+            position: 'fixed',
+            left: tooltip.x,
+            top: tooltip.y - 8,
+            transform: 'translate(-50%, -100%)',
+            background: 'var(--surface-2)',
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            padding: '5px 8px',
+            fontSize: 11,
+            color: 'var(--text)',
+            pointerEvents: 'none',
+            zIndex: 100,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span style={{ color: 'var(--muted)' }}>{tooltip.day}</span>
+          {tooltip.focus_minutes > 0 && (
+            <span> · {tooltip.focus_minutes}m focus</span>
+          )}
+          {tooltip.tasks_done > 0 && (
+            <span style={{ color: '#22C55E' }}> · {tooltip.tasks_done} done</span>
+          )}
+          {tooltip.focus_minutes === 0 && tooltip.tasks_done === 0 && (
+            <span style={{ color: 'var(--subtle)' }}> · No activity</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Dashboard ────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -222,6 +414,7 @@ export default function DashboardPage() {
 
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspaceId, setWorkspaceId] = useState('');
+  const [cachedToken, setCachedToken] = useState('');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activeSession, setActiveSession] = useState<Activity | null>(null);
@@ -256,6 +449,7 @@ export default function DashboardPage() {
           fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }),
           fetch(`${API_URL}/auth/claude-status`, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
+        setCachedToken(token);
         if (meRes.ok) {
           const { data } = await meRes.json();
           const list: Workspace[] = data.workspaces ?? [];
@@ -602,6 +796,11 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* ── Activity heatmap ──────────────────── */}
+        {workspaceId && cachedToken && (
+          <ActivityHeatmap workspaceId={workspaceId} token={cachedToken} />
+        )}
 
         {/* ── Free tier limit warning ───────────── */}
         {plan === 'free' && counts.total >= 45 && (
