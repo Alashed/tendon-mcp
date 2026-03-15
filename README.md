@@ -19,7 +19,7 @@ claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp
 
 1. [Create a free account →](https://tendon.alashed.kz/register)
 2. Run the command above in your terminal
-3. Open Claude Code → type `tendon whoami` → browser opens → click **Allow**
+3. Open Claude Code → say `start my day` → browser opens → click **Allow**
 4. Done. Just talk: "Create tasks…", "What did I do yesterday?"
 
 Full web dashboard, team features, Telegram reports, analytics.
@@ -82,9 +82,11 @@ Interactive setup wizard — starts PostgreSQL + API + MCP via Docker, creates y
 
 ```
 tendon.alashed.kz       →  Next.js web app     (port 3030)
-api.tendon.alashed.kz   →  Fastify API          (port 3001)
-mcp.tendon.alashed.kz   →  MCP Server           (port 3002)
+api.tendon.alashed.kz   →  Fastify API + MCP    (port 3001)
+mcp.tendon.alashed.kz   →  nginx proxy → API/mcp (port 3001)
 ```
+
+MCP logic lives inside the API process. `mcp.tendon.alashed.kz` is an nginx proxy to `api.tendon.alashed.kz/mcp`.
 
 ### Stack
 
@@ -92,35 +94,35 @@ mcp.tendon.alashed.kz   →  MCP Server           (port 3002)
 |-------|-----------|
 | Web | Next.js 15, React 19, Tailwind CSS, Clerk |
 | API | Fastify v5, TypeScript, PostgreSQL |
-| MCP | `@modelcontextprotocol/sdk` v1, StreamableHTTP |
-| Auth | Clerk (web) + OAuth 2.1 + PKCE (Claude Code) |
+| MCP | `@modelcontextprotocol/sdk` v1, Streamable HTTP, session store |
+| Auth | Clerk (web) + OAuth 2.1 + PKCE (Claude Code) + argon2id |
 | Infra | AWS EC2, RDS PostgreSQL, S3, SSM |
 
-### OAuth flow (RFC 9728 — MCP = resource server only)
+### OAuth flow (RFC 9728)
 
 ```
-Claude Code              MCP (mcp.*)          Web (tendon.*)         API (api.*)
-    │                        │                        │                        │
-    ├─ POST /mcp ────────────►│                        │                        │
-    │◄─ 401 WWW-Authenticate ─┤   resource_metadata=   │                        │
-    │    (points to tendon.*) │   tendon.../oauth-     │                        │
-    │                         │   protected-resource   │                        │
-    ├─ GET /.well-known/oauth-protected-resource ─────►│                        │
-    │◄─ { resource, authorization_servers } ───────────┤                        │
-    │                         │                        │                        │
-    ├─ GET /.well-known/oauth-authorization-server ───────────────────────────►│
-    │◄─ { authorization_endpoint, token_endpoint } ───────────────────────────┤
-    │                         │                        │                        │
-    ├─ browser: /oauth/authorize ─────────────────────►│  (Clerk + consent)     │
-    │◄─ redirect with code ────────────────────────────┤                        │
-    │                         │                        │                        │
-    ├─ POST /oauth/token ──────────────────────────────┼───────────────────────►│
-    │◄─ access_token ─────────────────────────────────┼────────────────────────┤
-    │                         │                        │                        │
-    ├─ POST /mcp (Bearer) ───►│                        │                        │
-    │                         ├─ POST /oauth/introspect───────────────────────►│
-    │                         │◄─ { user_id, workspace }───────────────────────┤
-    │◄─ tool result ──────────┤                        │                        │
+Claude Code        MCP (mcp.*)          API (api.*)           Web (tendon.*)
+    │                    │                    │                      │
+    ├─ POST /mcp ────────►│                    │                      │
+    │                     ├─ proxy ───────────►│                      │
+    │◄─ 401 WWW-Auth ─────┤ resource_metadata= │                      │
+    │                     │ api.*/oauth-prot.. │                      │
+    │                     │                    │                      │
+    ├─ GET api.*/.well-known/oauth-protected-resource ───────────────►│ (api.*)
+    │◄─ { resource, authorization_servers: [api.*] } ─────────────────┤
+    │                     │                    │                      │
+    ├─ GET api.*/.well-known/oauth-authorization-server ─────────────►│ (api.*)
+    │◄─ { authorization_endpoint, token_endpoint } ───────────────────┤
+    │                     │                    │                      │
+    ├─ browser: /oauth/authorize ──────────────────────────────────────►│ (consent UI)
+    │◄─ redirect with code ────────────────────────────────────────────┤
+    │                     │                    │                      │
+    ├─ POST api.*/oauth/token ──────────────►│                      │
+    │◄─ access_token ─────────────────────────┤                      │
+    │                     │                    │                      │
+    ├─ POST /mcp (Bearer) ►│                    │                      │
+    │                     ├─ proxy ───────────►│ (validates token DB) │
+    │◄─ tool result ───────┤                    │                      │
 ```
 
 ---

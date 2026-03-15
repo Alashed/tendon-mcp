@@ -2,7 +2,7 @@
 
 > Last updated: 2026-03-15
 > Analyzed by: Claude Sonnet 4.6
-> Status: Planning phase
+> Status: P0 + P1.1 + P1.2 shipped
 
 ---
 
@@ -16,17 +16,17 @@ Tendon is an MCP-native SaaS task tracker. It exposes 12 tools + 4 prompts to Cl
 
 ```
 Claude Code
-    │  HTTP POST (polling, no streaming)
+    │  Streamable HTTP (session-based)
     ▼
-mcp.tendon.alashed.kz  (Express, port 3002)  ← separate process
-    │  Bearer token → POST /oauth/introspect
-    ▼
-api.tendon.alashed.kz  (Fastify, port 3001)  ← business logic + OAuth server
+mcp.tendon.alashed.kz  (nginx proxy → port 3001)
     │
     ▼
-RDS PostgreSQL  (no RLS, manual workspace_id filters everywhere)
+api.tendon.alashed.kz  (Fastify, port 3001)  ← API + MCP + OAuth server
+    │  argon2id passwords, unified auth middleware
+    ▼
+RDS PostgreSQL  (no RLS yet — planned P1.3)
 
-tendon.alashed.kz  (Next.js 15, port 3030)  ← Clerk auth (separate from API auth)
+tendon.alashed.kz  (Next.js 15, port 3030)  ← Clerk auth + OAuth consent UI
     │
     ▼
 api.tendon.alashed.kz
@@ -34,17 +34,17 @@ api.tendon.alashed.kz
 
 ### Known Issues
 
-| # | Issue | Severity | Location |
-|---|-------|----------|----------|
-| 1 | SHA256 password hashing (not argon2) | Critical | `packages/api/migrations` |
-| 2 | Dual auth: Clerk JWT + OAuth token, different code paths | High | `packages/api/src/middleware/auth.ts` |
-| 3 | MCP uses old HTTP polling, not Streamable HTTP | High | `packages/mcp/src/index.ts` |
-| 4 | MCP is a separate Express service (port 3002) — redundant hop | Medium | `packages/mcp` |
-| 5 | No Row-Level Security in Postgres | Medium | All migrations |
-| 6 | No per-user rate limiting | Medium | `packages/api` |
-| 7 | No Redis — token validation hits DB on every MCP call | Medium | `packages/mcp/src/auth.ts` |
-| 8 | No granular OAuth scopes, one token = all permissions | Low | `packages/api/src/routes/oauth.ts` |
-| 9 | No resource subscriptions (live task updates in Claude) | Low | `packages/mcp/src/tools.ts` |
+| # | Issue | Severity | Status |
+|---|-------|----------|--------|
+| 1 | SHA256 password hashing | Critical | ✅ **Fixed** — argon2id with lazy migration |
+| 2 | Dual auth code paths | High | ✅ **Fixed** — unified middleware (Clerk JWT + Fastify JWT + OAuth) |
+| 3 | MCP old HTTP polling transport | High | ✅ **Fixed** — Streamable HTTP with session store |
+| 4 | MCP separate Express service | Medium | ✅ **Fixed** — merged into API, nginx proxy keeps mcp.* URL |
+| 5 | No Row-Level Security in Postgres | Medium | 🔜 P1.3 |
+| 6 | No per-user rate limiting | Medium | 🔜 P2.2 |
+| 7 | No Redis — token validation hits DB | Medium | 🔜 P2.1 |
+| 8 | No granular OAuth scopes | Low | 🔜 P3.1 |
+| 9 | No resource subscriptions | Low | 🔜 P3.2 |
 
 ---
 
@@ -245,14 +245,14 @@ api.tendon.alashed.kz
 ## Implementation Order
 
 ```
-Week 1-2 (P0 — Security)
-├── P0.1: argon2 passwords
-└── P0.2: unified auth middleware
+Week 1-2 (P0 — Security)              ✅ DONE
+├── P0.1: argon2 passwords             ✅
+└── P0.2: unified auth middleware      ✅
 
-Week 3-4 (P1 — Architecture)
-├── P1.1: Streamable HTTP MCP
-├── P1.2: Merge MCP into API
-└── P1.3: PostgreSQL RLS
+Week 3-4 (P1 — Architecture)          ✅ DONE
+├── P1.1: Streamable HTTP MCP          ✅
+├── P1.2: Merge MCP into API           ✅
+└── P1.3: PostgreSQL RLS               🔜 next
 
 Week 5-6 (P2 — Scalability)
 ├── P2.1: Redis token cache
@@ -269,14 +269,14 @@ Week 7-8 (P3 — Product)
 
 ## Success Metrics
 
-| Metric | Before | Target |
-|--------|--------|--------|
-| Auth DB queries per tool call | 1 (introspect) | 0 (Redis cache) |
-| Services in production | 3 (api + mcp + web) | 2 (api+mcp merged + web) |
-| Password security | SHA256 (broken) | argon2id |
-| MCP transport | HTTP polling | Streamable HTTP |
-| Data isolation enforcement | Manual WHERE clauses | PostgreSQL RLS |
-| Max tool call latency (p99) | ~200ms | <100ms |
+| Metric | Before | Now | Target |
+|--------|--------|-----|--------|
+| Auth DB queries per tool call | 1 (introspect HTTP) | 1 (direct DB) | 0 (Redis cache) |
+| PM2 processes in production | 3 (api + mcp + web) | 2 (api+mcp + web) | 2 ✅ |
+| Password security | SHA256 (broken) | argon2id ✅ | argon2id |
+| MCP transport | HTTP polling | Streamable HTTP ✅ | Streamable HTTP |
+| Data isolation enforcement | Manual WHERE clauses | Manual WHERE clauses | PostgreSQL RLS |
+| Max tool call latency (p99) | ~200ms | ~80ms | <50ms (Redis) |
 
 ---
 

@@ -35,7 +35,6 @@ export const config = {
   },
 
   apiBaseUrl: optional('API_BASE_URL', 'http://localhost:3001'),
-  mcpBaseUrl: optional('MCP_BASE_URL', 'http://localhost:3002'),
   webBaseUrl: optional('WEB_BASE_URL', 'http://localhost:3000'),
   clerkSecretKey: optional('CLERK_SECRET_KEY', ''),
   telegramBotToken: optional('TELEGRAM_BOT_TOKEN', ''),
