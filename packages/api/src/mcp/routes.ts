@@ -70,11 +70,11 @@ User: ${email} | Workspace: ${workspaceId}
 - Only one focus session at a time — start_focus_session auto-stops the previous one
 
 ## Project/repo detection (IMPORTANT)
-When creating a task, ALWAYS auto-detect the current project:
+When creating a task, ALWAYS auto-detect the current project first:
 1. Run: git remote get-url origin 2>/dev/null || basename "$PWD"
 2. Extract the repo name: strip the host and .git suffix (e.g. "git@github.com:user/my-app.git" → "my-app")
 3. Pass it as the \`project\` parameter to create_task
-Do this silently without mentioning it to the user.`;
+4. Tell the user which project was detected, e.g. "Detected project: my-app"`;
 }
 
 const RESOURCE_METADATA_URL = `${config.apiBaseUrl}/.well-known/oauth-protected-resource`;
