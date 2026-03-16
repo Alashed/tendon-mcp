@@ -19,10 +19,10 @@ When the user says "tendon whoami", "start my day", "connect tendon", or asks to
    - Call the tool. If auth is needed, Claude Code opens the browser automatically. Say: "Opening login — complete it in the browser, then I'll retry."
 
 **B. Tools are NOT visible AND you have NOT run `mcp add` yet in this conversation:**
-   - Run once: `claude mcp remove tendon 2>/dev/null; claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp`
+   - Run once: `claude mcp remove tendon 2>/dev/null; claude mcp add --transport http tendon https://api.tendon.alashed.kz/mcp`
    - Say: "Добавил tendon. **Перезапусти Claude Code** — MCP загружается только при старте. После перезапуска скажи 'start my day' — браузер откроется для входа."
    - Output the add command as ONE line in a code block — never split `tendon` and the URL.
 
 **C. Tools are NOT visible AND you already ran `mcp add` earlier in this conversation:**
    - Do NOT run add again.
-   - Ask: "Ты перезапустил Claude Code после того как я добавил конфиг?" If yes and still broken: `curl -s https://mcp.tendon.alashed.kz/health` to check the server.
+   - Ask: "Ты перезапустил Claude Code после того как я добавил конфиг?" If yes and still broken: `curl -s https://api.tendon.alashed.kz/health` to check the server.

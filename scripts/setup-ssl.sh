@@ -9,7 +9,7 @@ EMAIL=${1:-"admin@tendon.alashed.kz"}
 
 echo "==> Copying nginx configs..."
 sudo cp infra/nginx-api.conf /etc/nginx/conf.d/api.tendon.alashed.kz.conf
-sudo cp infra/nginx-mcp.conf /etc/nginx/conf.d/mcp.tendon.alashed.kz.conf
+sudo cp infra/nginx-mcp.conf /etc/nginx/conf.d/api.tendon.alashed.kz/mcp.conf
 
 # Temporarily serve HTTP so certbot can verify
 echo "==> Setting up HTTP-only blocks for cert verification..."
@@ -21,10 +21,10 @@ server {
 }
 NGINX
 
-sudo tee /etc/nginx/conf.d/mcp.tendon.alashed.kz.conf > /dev/null <<'NGINX'
+sudo tee /etc/nginx/conf.d/api.tendon.alashed.kz/mcp.conf > /dev/null <<'NGINX'
 server {
     listen 80;
-    server_name mcp.tendon.alashed.kz;
+    server_name api.tendon.alashed.kz/mcp;
     location / { proxy_pass http://127.0.0.1:3002; }
 }
 NGINX
@@ -37,7 +37,7 @@ sudo certbot --nginx \
   --agree-tos \
   --email "$EMAIL" \
   -d api.tendon.alashed.kz \
-  -d mcp.tendon.alashed.kz
+  -d api.tendon.alashed.kz/mcp
 
 echo "==> Installing final nginx configs with SSL..."
 sudo cp /home/ubuntu/alashed-tracker/../infra/nginx-api.conf /etc/nginx/conf.d/api.tendon.alashed.kz.conf 2>/dev/null || true
@@ -47,4 +47,4 @@ sudo nginx -t && sudo systemctl reload nginx
 echo ""
 echo "Done! Test:"
 echo "  curl https://api.tendon.alashed.kz/health"
-echo "  curl https://mcp.tendon.alashed.kz/health"
+echo "  curl https://api.tendon.alashed.kz/mcp/health"

@@ -20,7 +20,7 @@ import urllib.error
 from urllib.parse import urlparse, parse_qs
 
 API_URL = "https://api.tendon.alashed.kz"
-MCP_URL = "https://mcp.tendon.alashed.kz"
+MCP_URL = "https://api.tendon.alashed.kz"
 REDIRECT_URI = "http://localhost:3333/callback"
 KEYCHAIN_SERVICE = "Claude Code-credentials"
 

@@ -18,7 +18,7 @@ Tendon is an MCP-native SaaS task tracker. It exposes 12 tools + 4 prompts to Cl
 Claude Code
     │  Streamable HTTP (session-based)
     ▼
-mcp.tendon.alashed.kz  (nginx proxy → port 3001)
+api.tendon.alashed.kz/mcp  (nginx proxy → port 3001)
     │
     ▼
 api.tendon.alashed.kz  (Fastify, port 3001)  ← API + MCP + OAuth server
@@ -136,7 +136,7 @@ api.tendon.alashed.kz
   3. Move `packages/mcp/src/prompts.ts` → `packages/api/src/mcp/prompts.ts`
   4. Register MCP transport on Fastify via `fastify.register()` for `/mcp`
   5. Auth middleware reads Bearer token directly from DB (no introspect HTTP call)
-  6. Update Nginx: remove `mcp.tendon.alashed.kz`, add `/mcp` to `api.tendon.alashed.kz`
+  6. Update Nginx: remove `api.tendon.alashed.kz/mcp`, add `/mcp` to `api.tendon.alashed.kz`
   7. Update `.well-known/oauth-protected-resource` URL
   8. Remove `packages/mcp` from CI/CD pipeline
   9. Update README

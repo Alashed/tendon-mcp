@@ -231,7 +231,7 @@ function printSuccess(email: string): void {
 // ── whoami subcommand (no TTY required) ───────────────────────────────────────
 
 const HOSTED_API = 'https://api.tendon.alashed.kz';
-const HOSTED_MCP = 'https://mcp.tendon.alashed.kz/mcp';
+const HOSTED_MCP = 'https://api.tendon.alashed.kz/mcp';
 
 async function cmdWhoami(): Promise<void> {
   console.log('');

@@ -119,7 +119,7 @@ Claude Code also has slash prompts: `/morning`, `/wrap_up`, `/standup`, `/review
 If you don't want to self-host:
 
 ```bash
-claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp
+claude mcp add --transport http tendon https://api.tendon.alashed.kz/mcp
 ```
 
 1. [Create a free account](https://tendon.alashed.kz/register)
@@ -133,7 +133,7 @@ Full web dashboard, team features, Telegram daily reports.
 
 - **"Failed to connect"** → Restart Claude Code after `claude mcp add`. MCP is loaded at startup only.
 - **Browser didn't open** → First request must go to MCP; if tools aren't loaded, restart Claude Code.
-- **Server check** → `curl https://mcp.tendon.alashed.kz/health` — if it returns JSON, the server is up.
+- **Server check** → `curl https://api.tendon.alashed.kz/health` — if it returns JSON, the server is up.
 
 ---
 

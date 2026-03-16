@@ -14,7 +14,7 @@ Connect your workspace in one command — no config files, no manual token copyi
 ### Option 1 — Hosted (easiest, full dashboard)
 
 ```bash
-claude mcp add --transport http tendon https://mcp.tendon.alashed.kz/mcp
+claude mcp add --transport http tendon https://api.tendon.alashed.kz/mcp
 ```
 
 1. [Create a free account →](https://tendon.alashed.kz/register)
@@ -83,10 +83,10 @@ Interactive setup wizard — starts PostgreSQL + API + MCP via Docker, creates y
 ```
 tendon.alashed.kz       →  Next.js web app     (port 3030)
 api.tendon.alashed.kz   →  Fastify API + MCP    (port 3001)
-mcp.tendon.alashed.kz   →  nginx proxy → API/mcp (port 3001)
+api.tendon.alashed.kz/mcp   →  nginx proxy → API/mcp (port 3001)
 ```
 
-MCP logic lives inside the API process. `mcp.tendon.alashed.kz` is an nginx proxy to `api.tendon.alashed.kz/mcp`.
+MCP logic lives inside the API process. `api.tendon.alashed.kz/mcp` is an nginx proxy to `api.tendon.alashed.kz/mcp`.
 
 ### Stack
 

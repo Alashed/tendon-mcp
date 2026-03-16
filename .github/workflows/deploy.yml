@@ -115,7 +115,6 @@ jobs:
       - name: Upload nginx configs to S3
         run: |
           aws s3 cp infra/nginx-api.conf s3://${{ env.S3_BUCKET }}/nginx/nginx-api.conf
-          aws s3 cp infra/nginx-mcp.conf s3://${{ env.S3_BUCKET }}/nginx/nginx-mcp.conf
           aws s3 cp infra/nginx-tendon.conf s3://${{ env.S3_BUCKET }}/nginx/nginx-tendon.conf
 
       - name: Apply nginx configs via SSM
@@ -126,9 +125,8 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --parameters "commands=[
               'set -e',
-              'aws s3 cp s3://${{ env.S3_BUCKET }}/nginx/nginx-api.conf /etc/nginx/conf.d/api.tendon.alashed.kz.conf --region ${{ env.REGION }}',
-              'aws s3 cp s3://${{ env.S3_BUCKET }}/nginx/nginx-mcp.conf /etc/nginx/conf.d/mcp.tendon.alashed.kz.conf --region ${{ env.REGION }}',
-              'aws s3 cp s3://${{ env.S3_BUCKET }}/nginx/nginx-tendon.conf /etc/nginx/conf.d/tendon.alashed.kz.conf --region ${{ env.REGION }}',
+              'aws s3 cp s3://${{ env.S3_BUCKET }}/nginx/nginx-api.conf /etc/nginx/sites-available/api.tendon.alashed.kz --region ${{ env.REGION }}',
+              'aws s3 cp s3://${{ env.S3_BUCKET }}/nginx/nginx-tendon.conf /etc/nginx/sites-available/tendon.alashed.kz --region ${{ env.REGION }}',
               'nginx -t && systemctl reload nginx',
               'echo DONE'
             ]" \
