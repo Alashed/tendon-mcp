@@ -7,7 +7,7 @@ on:
 
 env:
   REGION: eu-north-1
-  INSTANCE_ID: i-08eb56616ddb569bc
+  INSTANCE_ID: i-05985e313b16833ec
   S3_BUCKET: alashed-media
 
 jobs:
