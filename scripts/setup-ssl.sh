@@ -1,19 +1,21 @@
 #!/bin/bash
-# One-time setup: install nginx configs + get SSL certs for API and MCP.
-# Run on the EC2 instance as ubuntu user:
-#   bash scripts/setup-ssl.sh your@email.com
+# One-time SSL setup on a fresh EC2 instance.
+# Requires DNS to already point to this server.
+# Run: bash scripts/setup-ssl.sh your@email.com
 
 set -e
 
 EMAIL=${1:-"admin@tendon.alashed.kz"}
 
 echo "==> Copying nginx configs..."
-sudo cp infra/nginx-api.conf /etc/nginx/conf.d/api.tendon.alashed.kz.conf
-sudo cp infra/nginx-mcp.conf /etc/nginx/conf.d/api.tendon.alashed.kz/mcp.conf
+sudo cp infra/nginx-api.conf /etc/nginx/sites-available/api.tendon.alashed.kz
+sudo cp infra/nginx-tendon.conf /etc/nginx/sites-available/tendon.alashed.kz
+sudo ln -sf /etc/nginx/sites-available/api.tendon.alashed.kz /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/tendon.alashed.kz /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
 
-# Temporarily serve HTTP so certbot can verify
 echo "==> Setting up HTTP-only blocks for cert verification..."
-sudo tee /etc/nginx/conf.d/api.tendon.alashed.kz.conf > /dev/null <<'NGINX'
+sudo tee /etc/nginx/sites-available/api.tendon.alashed.kz > /dev/null <<'NGINX'
 server {
     listen 80;
     server_name api.tendon.alashed.kz;
@@ -21,11 +23,11 @@ server {
 }
 NGINX
 
-sudo tee /etc/nginx/conf.d/api.tendon.alashed.kz/mcp.conf > /dev/null <<'NGINX'
+sudo tee /etc/nginx/sites-available/tendon.alashed.kz > /dev/null <<'NGINX'
 server {
     listen 80;
-    server_name api.tendon.alashed.kz/mcp;
-    location / { proxy_pass http://127.0.0.1:3002; }
+    server_name tendon.alashed.kz;
+    location / { proxy_pass http://127.0.0.1:3030; }
 }
 NGINX
 
@@ -37,14 +39,14 @@ sudo certbot --nginx \
   --agree-tos \
   --email "$EMAIL" \
   -d api.tendon.alashed.kz \
-  -d api.tendon.alashed.kz/mcp
+  -d tendon.alashed.kz
 
 echo "==> Installing final nginx configs with SSL..."
-sudo cp /home/ubuntu/alashed-tracker/../infra/nginx-api.conf /etc/nginx/conf.d/api.tendon.alashed.kz.conf 2>/dev/null || true
-# certbot already updated the configs with ssl blocks, just reload
+sudo cp infra/nginx-api.conf /etc/nginx/sites-available/api.tendon.alashed.kz
+sudo cp infra/nginx-tendon.conf /etc/nginx/sites-available/tendon.alashed.kz
 sudo nginx -t && sudo systemctl reload nginx
 
 echo ""
 echo "Done! Test:"
 echo "  curl https://api.tendon.alashed.kz/health"
-echo "  curl https://api.tendon.alashed.kz/mcp/health"
+echo "  curl https://tendon.alashed.kz"
