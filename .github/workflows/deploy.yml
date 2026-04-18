@@ -39,6 +39,20 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.REGION }}
 
+      - name: Wait for SSM agent online
+        run: |
+          for i in $(seq 1 30); do
+            STATUS=$(aws ssm describe-instance-information \
+              --region ${{ env.REGION }} \
+              --filters Key=InstanceIds,Values=${{ env.INSTANCE_ID }} \
+              --query "InstanceInformationList[0].PingStatus" --output text 2>/dev/null || echo "Unknown")
+            echo "[$i] SSM PingStatus: $STATUS"
+            if [ "$STATUS" = "Online" ]; then exit 0; fi
+            sleep 10
+          done
+          echo "SSM agent is not online on instance ${{ env.INSTANCE_ID }}"
+          exit 1
+
       - name: Package & upload to S3
         run: |
           cd packages/api
@@ -90,7 +104,7 @@ jobs:
                 --region ${{ env.REGION }} \
                 --instance-id ${{ env.INSTANCE_ID }} \
                 --command-id $COMMAND_ID \
-                --query "StandardErrorContent" --output text
+                --output json
               exit 1
             fi
             sleep 10
@@ -111,6 +125,20 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.REGION }}
+
+      - name: Wait for SSM agent online
+        run: |
+          for i in $(seq 1 30); do
+            STATUS=$(aws ssm describe-instance-information \
+              --region ${{ env.REGION }} \
+              --filters Key=InstanceIds,Values=${{ env.INSTANCE_ID }} \
+              --query "InstanceInformationList[0].PingStatus" --output text 2>/dev/null || echo "Unknown")
+            echo "[$i] SSM PingStatus: $STATUS"
+            if [ "$STATUS" = "Online" ]; then exit 0; fi
+            sleep 10
+          done
+          echo "SSM agent is not online on instance ${{ env.INSTANCE_ID }}"
+          exit 1
 
       - name: Upload nginx configs to S3
         run: |
@@ -146,7 +174,7 @@ jobs:
                 --region ${{ env.REGION }} \
                 --instance-id ${{ env.INSTANCE_ID }} \
                 --command-id $COMMAND_ID \
-                --query "StandardErrorContent" --output text
+                --output json
               exit 1
             fi
             sleep 6
@@ -183,6 +211,20 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.REGION }}
+
+      - name: Wait for SSM agent online
+        run: |
+          for i in $(seq 1 30); do
+            STATUS=$(aws ssm describe-instance-information \
+              --region ${{ env.REGION }} \
+              --filters Key=InstanceIds,Values=${{ env.INSTANCE_ID }} \
+              --query "InstanceInformationList[0].PingStatus" --output text 2>/dev/null || echo "Unknown")
+            echo "[$i] SSM PingStatus: $STATUS"
+            if [ "$STATUS" = "Online" ]; then exit 0; fi
+            sleep 10
+          done
+          echo "SSM agent is not online on instance ${{ env.INSTANCE_ID }}"
+          exit 1
 
       - name: Package & upload to S3
         run: |
@@ -231,7 +273,7 @@ jobs:
                 --region ${{ env.REGION }} \
                 --instance-id ${{ env.INSTANCE_ID }} \
                 --command-id $COMMAND_ID \
-                --query "StandardErrorContent" --output text
+                --output json
               exit 1
             fi
             sleep 10

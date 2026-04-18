@@ -19,7 +19,7 @@ claude mcp add --transport http tendon https://api.tendon.alashed.kz/mcp
 
 1. [Create a free account →](https://tendon.alashed.kz/register)
 2. Run the command above in your terminal
-3. Open Claude Code → say `start my day` → browser opens → click **Allow**
+3. Open Claude Code → say `Start my day in Tendon: create my first task, start a focus session, and show today plan.` → browser opens → click **Allow**
 4. Done. Just talk: "Create tasks…", "What did I do yesterday?"
 
 Full web dashboard, team features, Telegram reports, analytics.
@@ -39,7 +39,7 @@ Interactive setup wizard — starts PostgreSQL + API + MCP via Docker, creates y
 ## What you can do
 
 ```
-"Start my day"                          → /morning prompt
+"Start my day in Tendon: create my first task, start a focus session, and show today plan." → first-run activation
 "What did I do yesterday?"              → get_daily_summary
 "Create tasks for today's sprint"       → create_task × N
 "Start a focus session on the auth bug" → start_focus_session

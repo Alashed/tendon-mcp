@@ -122,6 +122,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return {
       data: {
         connected: !!token,
+        workspace_id: token?.workspace_id ?? null,
         workspace_name: token?.workspace_name ?? null,
         connected_at: token?.created_at ?? null,
         expires_at: token?.expires_at ?? null,

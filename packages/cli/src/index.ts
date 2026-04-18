@@ -219,7 +219,8 @@ function printSuccess(email: string): void {
       '',
       pc.cyan(`  claude mcp add --transport http tendon ${MCP_URL}`),
       '',
-      `Then open Claude Code and say: ${pc.yellow('"start my day"')}`,
+      `Then open Claude Code and say:`,
+      pc.yellow('"Start my day in Tendon: create my first task, start a focus session, and show today plan."'),
       '',
       pc.dim(`Signed in as: ${email}`),
       pc.dim(`Dashboard:    ${API_URL}`),
@@ -277,7 +278,8 @@ async function cmdWhoami(): Promise<void> {
   console.log(pc.dim('  If tendon is not added yet:'));
   console.log(pc.cyan(`    claude mcp add --transport http tendon ${mcpUrl}`));
   console.log('');
-  console.log(pc.dim('  Then restart Claude Code and say: ') + pc.cyan('"start my day"'));
+  console.log(pc.dim('  Then restart Claude Code and say:'));
+  console.log(pc.cyan('    "Start my day in Tendon: create my first task, start a focus session, and show today plan."'));
   console.log(pc.dim('  → Browser opens for login'));
   console.log('');
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { UserButton, useAuth } from '@clerk/nextjs';
 import { useState, useEffect } from 'react';
 
@@ -70,18 +70,57 @@ const NAV = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { getToken } = useAuth();
   const [claudeConnected, setClaudeConnected] = useState<boolean | null>(null);
+  const [activationChecked, setActivationChecked] = useState(false);
 
   useEffect(() => {
-    getToken().then((token) => {
-      if (!token) return;
-      fetch(`${API_URL}/auth/claude-status`, { headers: { Authorization: `Bearer ${token}` } })
-        .then((r) => r.ok ? r.json() : null)
-        .then((body) => { if (body?.data) setClaudeConnected(body.data.connected); })
-        .catch(() => {});
+    getToken().then(async (token) => {
+      if (!token) {
+        setActivationChecked(true);
+        return;
+      }
+
+      try {
+        const claudeStatusRes = await fetch(`${API_URL}/auth/claude-status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const claudeStatusBody = claudeStatusRes.ok ? await claudeStatusRes.json() : null;
+        const connected = Boolean(claudeStatusBody?.data?.connected);
+        const workspaceId = claudeStatusBody?.data?.workspace_id as string | null | undefined;
+        setClaudeConnected(connected);
+
+        if (!connected || !workspaceId) {
+          router.replace('/onboarding');
+          return;
+        }
+
+        const onboardingStatusRes = await fetch(`${API_URL}/events/onboarding/status?workspace_id=${workspaceId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const onboardingStatusBody = onboardingStatusRes.ok ? await onboardingStatusRes.json() : null;
+        const activated = Boolean(onboardingStatusBody?.data?.first_value_achieved);
+
+        if (!activated) {
+          router.replace('/onboarding');
+          return;
+        }
+      } catch {
+        // keep dashboard accessible on transient API issues
+      } finally {
+        setActivationChecked(true);
+      }
     });
-  }, [getToken]);
+  }, [getToken, router]);
+
+  if (!activationChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)', color: 'var(--muted)' }}>
+        Checking activation...
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>

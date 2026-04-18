@@ -20,6 +20,13 @@ interface FirstValueCheckResult extends FirstValueSnapshot {
   hasFirstValue: boolean;
 }
 
+interface OnboardingStatusResponse {
+  connected: boolean;
+  workspace_id: string | null;
+  first_value_achieved: boolean;
+  first_value_source: 'event' | 'workspace_data' | null;
+}
+
 function getStatusIndex(status: StatusKey): number {
   const order: StatusKey[] = ['not_started', 'waiting_connect', 'connected', 'waiting_first_call', 'first_value'];
   return order.indexOf(status);
@@ -77,21 +84,13 @@ export default function OnboardingPage() {
     setTimeout(() => setCopied(null), 2200);
   };
 
-  const checkFirstValue = useCallback(async (token: string): Promise<FirstValueCheckResult> => {
-    const meRes = await fetch(`${API_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!meRes.ok) return { hasFirstValue: false, taskCount: 0, trackedMinutes: 0 };
-    const { data } = await meRes.json();
-    const workspace = data.workspaces?.find((w: { type: string }) => w.type === 'personal') ?? data.workspaces?.[0];
-    if (!workspace) return { hasFirstValue: false, taskCount: 0, trackedMinutes: 0 };
-
+  const checkFirstValue = useCallback(async (token: string, workspaceId: string): Promise<FirstValueCheckResult> => {
     const today = new Date().toISOString().split('T')[0];
     const [tasksRes, activitiesRes] = await Promise.all([
-      fetch(`${API_URL}/tasks?workspace_id=${workspace.id}`, {
+      fetch(`${API_URL}/tasks?workspace_id=${workspaceId}`, {
         headers: { Authorization: `Bearer ${token}` },
       }),
-      fetch(`${API_URL}/activities?workspace_id=${workspace.id}&date=${today}`, {
+      fetch(`${API_URL}/activities?workspace_id=${workspaceId}&date=${today}`, {
         headers: { Authorization: `Bearer ${token}` },
       }),
     ]);
@@ -129,6 +128,7 @@ export default function OnboardingPage() {
 
       const { data } = await res.json();
       const isConnected = Boolean(data?.connected);
+      const workspaceId = (data?.workspace_id as string | null) ?? null;
       setConnected(isConnected);
 
       if (!isConnected) {
@@ -137,20 +137,49 @@ export default function OnboardingPage() {
         return;
       }
 
-      setStatus('connected');
-      void trackEventOnce('mcp_connected');
-      void trackEventOnce('oauth_completed');
+      if (!workspaceId) {
+        setStatus('connected');
+        setStep('first_action');
+        return;
+      }
 
-      const valueCheck = await checkFirstValue(token);
+      setStatus('connected');
+      void trackEventOnce('mcp_connected', { workspace_id: workspaceId });
+      void trackEventOnce('oauth_completed', { workspace_id: workspaceId });
+
+      const onboardingStatusRes = await fetch(`${API_URL}/events/onboarding/status?workspace_id=${workspaceId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (onboardingStatusRes.ok) {
+        const { data: onboardingStatus } = await onboardingStatusRes.json() as { data: OnboardingStatusResponse };
+        if (onboardingStatus.first_value_achieved) {
+          const valueCheck = await checkFirstValue(token, workspaceId);
+          setStatus('first_value');
+          setStep('first_value');
+          void trackEventOnce('first_value_achieved', {
+            workspace_id: workspaceId,
+            source: onboardingStatus.first_value_source ?? 'event',
+            task_count: valueCheck.taskCount,
+            tracked_minutes: valueCheck.trackedMinutes,
+          });
+          if (valueCheck.taskCount > 0) void trackEventOnce('first_task_created', { workspace_id: workspaceId });
+          if (valueCheck.trackedMinutes > 0) void trackEventOnce('first_focus_started', { workspace_id: workspaceId });
+          return;
+        }
+      }
+
+      const valueCheck = await checkFirstValue(token, workspaceId);
       if (valueCheck.hasFirstValue) {
         setStatus('first_value');
         setStep('first_value');
         void trackEventOnce('first_value_achieved', {
+          workspace_id: workspaceId,
+          source: 'workspace_data',
           task_count: valueCheck.taskCount,
           tracked_minutes: valueCheck.trackedMinutes,
         });
-        if (valueCheck.taskCount > 0) void trackEventOnce('first_task_created');
-        if (valueCheck.trackedMinutes > 0) void trackEventOnce('first_focus_started');
+        if (valueCheck.taskCount > 0) void trackEventOnce('first_task_created', { workspace_id: workspaceId });
+        if (valueCheck.trackedMinutes > 0) void trackEventOnce('first_focus_started', { workspace_id: workspaceId });
       } else {
         setStatus('waiting_first_call');
         setStep('first_action');
@@ -304,7 +333,7 @@ export default function OnboardingPage() {
             <button
               onClick={() => {
                 void copy('prompt');
-                void trackEventOnce('first_prompt_sent');
+                void trackEventOnce('first_prompt_sent', { from: 'onboarding_first_action' });
               }}
               className="w-full py-2 rounded-lg text-xs font-medium border transition-all"
               style={{

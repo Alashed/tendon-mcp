@@ -61,13 +61,15 @@ Requires [Docker Desktop](https://www.docker.com/products/docker-desktop) to be 
 claude mcp add --transport http tendon http://localhost:3002/mcp
 ```
 
-**2. In Claude Code** — type `tendon whoami`. Browser opens for auth → complete login.
+**2. In Claude Code** — send:
+`Start my day in Tendon: create my first task, start a focus session, and show today plan.`
+Browser opens for auth (if needed) → complete login.
 
 **Terminal health check:**
 ```bash
 tendon whoami
 ```
-Shows API status and next steps (open Claude → type tendon whoami).
+Shows API status and next steps (open Claude → send the first Tendon prompt).
 
 ---
 
@@ -76,7 +78,7 @@ Shows API status and next steps (open Claude → type tendon whoami).
 Natural language works everywhere (Claude Code, Cursor):
 
 ```
-"Show today's plan and start focus on first task"
+"Start my day in Tendon: create my first task, start a focus session, and show today plan."
 "create 3 tasks for today"
 "start focus on [task]"
 "what did I do yesterday?"
@@ -125,7 +127,7 @@ claude mcp add --transport http tendon https://api.tendon.alashed.kz/mcp
 1. [Create a free account](https://tendon.alashed.kz/register)
 2. Run the command above
 3. **Restart Claude Code** — MCP loads only at startup
-4. In chat, type `tendon whoami` → Claude opens a browser → click Allow
+4. In Claude chat, send the first Tendon prompt → Claude opens a browser → click Allow
 
 Full web dashboard, team features, Telegram daily reports.
 
