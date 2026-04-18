@@ -155,6 +155,8 @@ jobs:
               'set -e',
               'aws s3 cp s3://${{ env.S3_BUCKET }}/nginx/nginx-api.conf /etc/nginx/sites-available/api.tendon.alashed.kz --region ${{ env.REGION }}',
               'aws s3 cp s3://${{ env.S3_BUCKET }}/nginx/nginx-tendon.conf /etc/nginx/sites-available/tendon.alashed.kz --region ${{ env.REGION }}',
+              'ln -sfn /etc/nginx/sites-available/api.tendon.alashed.kz /etc/nginx/sites-enabled/api.tendon.alashed.kz',
+              'ln -sfn /etc/nginx/sites-available/tendon.alashed.kz /etc/nginx/sites-enabled/tendon.alashed.kz',
               'nginx -t && systemctl reload nginx',
               'echo DONE'
             ]" \
