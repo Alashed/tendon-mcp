@@ -959,7 +959,7 @@ export default function DashboardPage() {
         )}
 
         {/* ── Connect Claude / Claude tip ───────── */}
-        {!loading && tasks.length === 0 ? (
+        {!loading && claudeConnected === false ? (
           <div
             className="rounded-xl p-5 mb-6 flex items-start gap-4"
             style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}
@@ -975,10 +975,10 @@ export default function DashboardPage() {
             <div className="flex-1">
               <p className="text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>Connect Claude Code to get started</p>
               <p className="text-xs mb-3" style={{ color: 'var(--muted)' }}>
-                Run one command and Claude will create tasks, track your time, and help you stay focused.
+                Run one command, then send the first prompt in Claude to create your first task, start focus, and generate today&apos;s plan.
               </p>
               <Link href="/onboarding" className="amber-btn text-xs px-4 py-2 rounded-lg inline-flex">
-                See setup instructions →
+                Start activation flow →
               </Link>
             </div>
           </div>
@@ -990,9 +990,7 @@ export default function DashboardPage() {
             <span style={{ color: 'var(--accent)' }} className="mt-0.5 shrink-0">✦</span>
             <div style={{ color: 'var(--muted)' }} className="text-xs">
               Ask Claude:{' '}
-              <span style={{ color: 'var(--text)' }}>&ldquo;What should I focus on today?&rdquo;</span>
-              {' '}·{' '}
-              <span style={{ color: 'var(--text)' }}>&ldquo;Start a focus session on the auth bug&rdquo;</span>
+              <span style={{ color: 'var(--text)' }}>&ldquo;Start my day in Tendon: create my first task, start a focus session, and show today plan.&rdquo;</span>
             </div>
           </div>
         )}

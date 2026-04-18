@@ -138,7 +138,7 @@ export default function LandingPage() {
             {[
               {
                 who: 'you',
-                msg: '/morning',
+                msg: 'Start my day in Tendon: create my first task, start a focus session, and show today plan.',
                 sub: null,
               },
               {
@@ -192,7 +192,7 @@ export default function LandingPage() {
             },
             {
               label: 'Daily report and plan, every morning',
-              body: '/morning gives you yesterday\'s summary and today\'s prioritized plan. Claude pulls real data and tells you exactly what to focus on first.',
+              body: 'Your first prompt can create tasks, start focus, and generate a plan. Then /morning keeps the daily loop running with prioritized next steps.',
             },
             {
               label: 'Telegram digest — no need to open anything',

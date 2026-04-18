@@ -117,7 +117,7 @@ export default function RegisterPage() {
             },
             {
               label: 'Step 2 — Say this in Claude Code',
-              content: '"Create a task: implement refresh token, high priority"',
+              content: '"Start my day in Tendon: create my first task, start a focus session, and show today plan."',
               mono: false,
               accent: false,
             },

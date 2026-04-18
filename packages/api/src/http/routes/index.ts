@@ -9,6 +9,7 @@ import { reportRoutes } from './reports.routes.js';
 import { inviteRoutes } from './invites.routes.js';
 import { mcpRoutes } from '../../mcp/routes.js';
 import { projectRoutes } from './projects.routes.js';
+import { eventRoutes } from './events.routes.js';
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(oauthRoutes);
@@ -20,6 +21,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   await app.register(telegramRoutes);
   await app.register(reportRoutes);
   await app.register(inviteRoutes);
+  await app.register(eventRoutes);
   await app.register(mcpRoutes);
 
   app.get('/health', async () => ({
