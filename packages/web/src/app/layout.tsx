@@ -1,19 +1,19 @@
-import type { Metadata } from 'next';
-import { Syne, Outfit, JetBrains_Mono } from 'next/font/google';
-import { ClerkProvider } from '@clerk/nextjs';
+import type { Metadata, Viewport } from 'next';
+import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google';
+import { Providers } from './providers';
 import './globals.css';
 
-const syne = Syne({
+const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
-  variable: '--font-syne',
-  weight: ['400', '600', '700', '800'],
+  variable: '--font-display',
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
 
-const outfit = Outfit({
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-outfit',
-  weight: ['300', '400', '500', '600'],
+  variable: '--font-sans',
+  weight: ['300', '400', '500', '600', '700'],
   display: 'swap',
 });
 
@@ -25,25 +25,49 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Tendon — Task tracking for Claude Code',
+  metadataBase: new URL('https://tendon.alashed.kz'),
+  title: {
+    default: 'Tendon — Task tracking for Claude Code',
+    template: '%s · Tendon',
+  },
   description:
     'Connect your task board to Claude Code in one command. No config files, no tokens, no friction.',
+  applicationName: 'Tendon',
   openGraph: {
     title: 'Tendon',
     description: "Your tasks, in Claude's hands.",
     siteName: 'Tendon',
+    type: 'website',
   },
+  twitter: {
+    card: 'summary',
+    title: 'Tendon',
+    description: "Your tasks, in Claude's hands.",
+  },
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/logo.svg', type: 'image/svg+xml', sizes: 'any' },
+    ],
+    apple: '/apple-icon.svg',
+    shortcut: '/icon.svg',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#08080B',
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        className={`${syne.variable} ${outfit.variable} ${jetbrainsMono.variable}`}
-      >
-        <body>{children}</body>
-      </html>
-    </ClerkProvider>
+    <html
+      lang="en"
+      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}
+    >
+      <body>
+        <Providers>{children}</Providers>
+      </body>
+    </html>
   );
 }

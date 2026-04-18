@@ -1,9 +1,10 @@
 import { SignIn } from '@clerk/nextjs';
 import Link from 'next/link';
+import { Logo } from '@/components/ui';
 
 const clerkDark = {
   variables: {
-    colorPrimary: '#3B82F6',
+    colorPrimary: '#6366f1',
     colorBackground: '#111115',
     colorText: '#FAFAFA',
     colorTextSecondary: '#A1A1AA',
@@ -14,7 +15,7 @@ const clerkDark = {
     colorSuccess: '#4ADE80',
     colorWarning: '#FBBF24',
     borderRadius: '8px',
-    fontFamily: 'var(--font-outfit), system-ui, sans-serif',
+    fontFamily: 'var(--font-sans), system-ui, sans-serif',
     fontSize: '14px',
   },
   elements: {
@@ -25,7 +26,7 @@ const clerkDark = {
     },
     cardBox: { background: '#111115' },
     headerTitle: {
-      fontFamily: 'var(--font-syne), system-ui, sans-serif',
+      fontFamily: 'var(--font-display), system-ui, sans-serif',
       fontWeight: '700',
       color: '#FAFAFA',
     },
@@ -42,11 +43,11 @@ const clerkDark = {
     formFieldSuccessText: { color: '#4ADE80' },
     formFieldWarningText: { color: '#FBBF24' },
     formButtonPrimary: {
-      backgroundColor: '#3B82F6',
+      backgroundColor: '#6366f1',
       color: '#fff',
       fontWeight: '600',
     },
-    formButtonReset: { color: '#60A5FA' },
+    formButtonReset: { color: '#818cf8' },
     dividerLine: { background: 'rgba(255,255,255,0.07)' },
     dividerText: { color: '#52525B' },
     socialButtonsBlockButton: {
@@ -56,7 +57,7 @@ const clerkDark = {
     },
     socialButtonsBlockButtonText: { color: '#FAFAFA' },
     socialButtonsBlockButtonArrow: { color: '#71717A' },
-    footerActionLink: { color: '#60A5FA' },
+    footerActionLink: { color: '#818cf8' },
     footerActionText: { color: '#71717A' },
     footer: { background: '#111115', borderTop: '1px solid rgba(255,255,255,0.06)' },
     identityPreviewText: { color: '#FAFAFA' },
@@ -68,7 +69,7 @@ const clerkDark = {
       borderColor: 'rgba(255,255,255,0.1)',
       color: '#FAFAFA',
     },
-    formResendCodeLink: { color: '#60A5FA' },
+    formResendCodeLink: { color: '#818cf8' },
   },
 } as const;
 
@@ -76,53 +77,53 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--bg)' }}>
 
-      {/* ── SignIn side ─────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-[400px]">
-          <Link href="/" className="font-display font-bold text-lg mb-8 block text-center">
-            <span style={{ color: 'var(--accent)' }}>tendon</span>
-            <span style={{ color: 'var(--muted)' }}>.</span>
+          <Link href="/" className="inline-flex mb-8" aria-label="Tendon home">
+            <Logo size={32} withWordmark />
           </Link>
 
-          <SignIn
-            fallbackRedirectUrl="/dashboard"
-            signUpUrl="/register"
-            appearance={clerkDark}
-          />
+          <div className="mb-6">
+            <p className="eyebrow mb-2">Welcome back</p>
+            <h1 className="heading text-2xl" style={{ letterSpacing: '-0.02em' }}>
+              Sign in to Tendon
+            </h1>
+          </div>
+
+          <SignIn fallbackRedirectUrl="/dashboard" signUpUrl="/register" appearance={clerkDark} />
         </div>
       </div>
 
-      {/* ── Decorative side ─────────────────────────── */}
       <div
-        className="hidden lg:flex flex-1 items-center justify-center p-12 relative border-l"
-        style={{ borderColor: 'var(--border)' }}
+        className="hidden lg:flex flex-1 items-center justify-center p-12 relative border-l overflow-hidden"
+        style={{ borderColor: 'var(--border)', background: 'var(--bg-soft)' }}
       >
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(ellipse at 30% 50%, rgba(59,130,246,0.06) 0%, transparent 65%)',
-          }}
-        />
-        <div className="relative max-w-sm animate-fade-in delay-300">
-          <div className="terminal-cmd text-sm leading-relaxed">
-            <div className="text-xs mb-4" style={{ color: 'var(--muted)' }}>
-              Claude Code · Tendon MCP
+        <div className="absolute inset-0 glow-bg pointer-events-none opacity-60" />
+        <div className="grid-bg absolute inset-0 opacity-40" />
+
+        <div className="relative max-w-sm w-full">
+          <p className="eyebrow mb-4">Your daily briefing</p>
+
+          <div className="card-elev p-5 mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse-soft" style={{ background: 'var(--accent-light)' }} />
+              <span className="text-xs font-mono" style={{ color: 'var(--subtle)' }}>
+                Claude Code · Tendon MCP
+              </span>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4 text-sm font-mono">
               <div>
-                <span style={{ color: 'var(--muted)' }}>You: </span>
-                What should I work on today?
+                <span style={{ color: 'var(--subtle)' }}>you › </span>
+                <span style={{ color: 'var(--text-soft)' }}>what should I work on today?</span>
               </div>
-              <div style={{ color: 'var(--accent-light)' }}>
-                <span style={{ color: 'var(--accent)' }}>Claude: </span>
-                You have 3 in-progress tasks. The auth bug is highest priority — you flagged it as
-                blocking yesterday.
+              <div style={{ color: 'var(--accent-light)', lineHeight: 1.55 }}>
+                <span style={{ color: 'var(--accent)' }}>claude › </span>
+                3 in-progress tasks. Auth bug is highest priority — you flagged it as blocking yesterday. Start focus?
               </div>
             </div>
           </div>
-          <p className="text-xs text-center mt-3" style={{ color: 'var(--subtle)' }}>
-            This is what Claude sees after connecting Tendon
+          <p className="text-xs" style={{ color: 'var(--muted)' }}>
+            This is what Claude sees after connecting Tendon.
           </p>
         </div>
       </div>

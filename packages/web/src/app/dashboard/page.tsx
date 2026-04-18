@@ -8,19 +8,20 @@ import {
   getActivities, startActivity, stopActivity,
   type Task, type Activity,
 } from '@/lib/api';
+import { Stat, EmptyState } from '@/components/ui';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
 
 const STATUS_DOT: Record<Task['status'], string> = {
   planned: '#52525B',
-  in_progress: '#3B82F6',
+  in_progress: '#6366f1',
   done: '#22C55E',
   archived: '#3F3F46',
 };
 
 const PRIORITY_BADGE: Record<NonNullable<Task['priority']>, { bg: string; color: string }> = {
   high: { bg: 'rgba(239,68,68,0.12)', color: '#FCA5A5' },
-  medium: { bg: 'rgba(59,130,246,0.12)', color: '#93C5FD' },
+  medium: { bg: 'rgba(99,102,241,0.12)', color: '#a5b4fc' },
   low: { bg: 'rgba(82,82,91,0.4)', color: '#71717A' },
 };
 
@@ -155,8 +156,8 @@ function InviteModal({
                     onClick={() => setRole(r)}
                     className="flex-1 py-2 rounded-lg text-xs border transition-all"
                     style={{
-                      borderColor: role === r ? 'rgba(59,130,246,0.5)' : 'var(--border)',
-                      background: role === r ? 'rgba(59,130,246,0.08)' : 'transparent',
+                      borderColor: role === r ? 'rgba(99,102,241,0.5)' : 'var(--border)',
+                      background: role === r ? 'rgba(99,102,241,0.08)' : 'transparent',
                       color: role === r ? 'var(--accent)' : 'var(--muted)',
                     }}
                   >
@@ -193,9 +194,9 @@ function InviteModal({
               onClick={copy}
               className="w-full py-2.5 rounded-lg text-sm border transition-all"
               style={{
-                borderColor: copied ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.15)',
+                borderColor: copied ? 'rgba(99,102,241,0.4)' : 'rgba(99,102,241,0.15)',
                 color: copied ? 'var(--accent)' : 'var(--muted)',
-                background: copied ? 'rgba(59,130,246,0.06)' : 'transparent',
+                background: copied ? 'rgba(99,102,241,0.06)' : 'transparent',
               }}
             >
               {copied ? '✓ Copied!' : 'Copy link'}
@@ -282,11 +283,11 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
   // Stat block color — one blue hue, 5 levels of intensity
   const statColor = (value: number, max: number) => {
     const ratio = Math.min(value / Math.max(max, 1), 1);
-    if (ratio === 0)  return { bg: 'rgba(59,130,246,0.06)',  text: 'rgba(255,255,255,0.25)' };
-    if (ratio < 0.2)  return { bg: 'rgba(59,130,246,0.12)', text: 'rgba(147,197,253,0.7)' };
-    if (ratio < 0.45) return { bg: 'rgba(59,130,246,0.22)', text: '#93C5FD' };
-    if (ratio < 0.75) return { bg: 'rgba(59,130,246,0.38)', text: '#60A5FA' };
-    return { bg: 'rgba(59,130,246,0.55)', text: '#3B82F6' };
+    if (ratio === 0)  return { bg: 'rgba(99,102,241,0.06)',  text: 'rgba(255,255,255,0.25)' };
+    if (ratio < 0.2)  return { bg: 'rgba(99,102,241,0.12)', text: 'rgba(165,180,252,0.75)' };
+    if (ratio < 0.45) return { bg: 'rgba(99,102,241,0.22)', text: '#a5b4fc' };
+    if (ratio < 0.75) return { bg: 'rgba(99,102,241,0.38)', text: '#818cf8' };
+    return { bg: 'rgba(99,102,241,0.55)', text: '#6366f1' };
   };
 
   // Build grid: col = week, row = Mon(0)..Sun(6)
@@ -327,10 +328,10 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
 
   const color = (mins: number, done: number) => {
     if (mins === 0 && done === 0) return 'rgba(255,255,255,0.06)';
-    if (mins < 15) return 'rgba(59,130,246,0.22)';
-    if (mins < 45) return 'rgba(59,130,246,0.45)';
-    if (mins < 90) return 'rgba(59,130,246,0.7)';
-    return '#3B82F6';
+    if (mins < 15) return 'rgba(99,102,241,0.22)';
+    if (mins < 45) return 'rgba(99,102,241,0.45)';
+    if (mins < 90) return 'rgba(99,102,241,0.7)';
+    return '#6366f1';
   };
 
   const fmtDate = (d: string) =>
@@ -519,7 +520,7 @@ function ActivityHeatmap({ workspaceId, token }: { workspaceId: string; token: s
               padding: '10px 12px',
             }}
           >
-            <div style={{ fontSize: 18, fontWeight: 700, color: c.text, lineHeight: 1, fontFamily: 'var(--font-syne)' }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: c.text, lineHeight: 1, fontFamily: 'var(--font-display)' }}>
               {value}
             </div>
             <div style={{ fontSize: 10, color: 'var(--subtle)', marginTop: 4 }}>{label}</div>
@@ -719,218 +720,203 @@ export default function DashboardPage() {
   const isTeam = currentWorkspace?.type === 'team';
   const canInvite = isTeam && (currentWorkspace?.role === 'owner' || currentWorkspace?.role === 'admin');
 
+  const planBadge =
+    plan === 'personal' ? (
+      <span className="badge badge-accent">Pro</span>
+    ) : plan === 'team' ? (
+      <span className="badge" style={{ color: '#fcd34d', borderColor: 'rgba(234,179,8,0.3)', background: 'rgba(234,179,8,0.08)' }}>
+        Team
+      </span>
+    ) : (
+      <a href="/#pricing" className="badge hover:opacity-90" title="Upgrade to Pro">
+        Free
+      </a>
+    );
+
+  const connectionBadge =
+    claudeConnected === true ? (
+      <span className="badge badge-success">
+        <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} />
+        Claude connected
+      </span>
+    ) : claudeConnected === false ? (
+      <Link href="/onboarding" className="badge badge-accent hover:opacity-90">
+        <span className="w-1.5 h-1.5 rounded-full animate-pulse-soft" style={{ background: 'var(--accent-light)' }} />
+        Connect Claude →
+      </Link>
+    ) : null;
+
+  const headerActions = (
+    <>
+      {connectionBadge}
+      {planBadge}
+      {isTeam && (
+        <Link href="/dashboard/team" className="btn-ghost text-xs">
+          Team view →
+        </Link>
+      )}
+      {canInvite && (
+        <button onClick={() => setShowInvite(true)} className="btn-ghost text-xs" style={{ borderColor: 'rgba(99,102,241,0.35)', color: 'var(--accent-light)' }}>
+          + Invite
+        </button>
+      )}
+    </>
+  );
+
   return (
     <div style={{ background: 'var(--bg)' }}>
-      {showInvite && (
-        <InviteModal workspaceId={workspaceId} onClose={() => setShowInvite(false)} />
-      )}
+      {showInvite && <InviteModal workspaceId={workspaceId} onClose={() => setShowInvite(false)} />}
 
-      <div className="max-w-3xl mx-auto px-8 py-8">
+      {/* ── Page header ── */}
+      <header
+        className="sticky top-0 z-20 pt-6 pb-5 border-b backdrop-blur-md"
+        style={{ borderColor: 'var(--border)', background: 'rgba(8, 8, 11, 0.78)' }}
+      >
+        <div className="container-app flex items-start justify-between gap-6 flex-wrap">
+          <div className="min-w-0">
+            <p className="eyebrow mb-1.5">Overview</p>
+            <h1 className="heading text-2xl leading-tight tracking-tight">Good work, {displayName}.</h1>
+            <div className="flex items-center gap-4 text-xs mt-1.5" style={{ color: 'var(--muted)' }}>
+              <span>
+                Tracked today:{' '}
+                <span style={{ color: trackedSeconds > 0 ? 'var(--text)' : 'var(--muted)' }}>
+                  {loading ? '—' : trackedSeconds > 0 ? formatDuration(trackedSeconds) : '0m'}
+                </span>
+              </span>
+              {lastActivity && (
+                <span>
+                  Last activity:{' '}
+                  <span style={{ color: 'var(--text-soft)' }}>{formatTime(lastActivity.end_time!)}</span>
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">{headerActions}</div>
+        </div>
 
-        {/* ── Workspace switcher ────────────────── */}
+        {/* Workspace switcher */}
         {workspaces.length > 1 && (
-          <div className="flex items-center gap-2 mb-6">
-            <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'var(--surface)' }}>
+          <div className="container-app mt-4 flex items-center gap-2">
+            <div className="inline-flex gap-1 p-1 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               {workspaces.map((ws) => (
                 <button
                   key={ws.id}
                   onClick={() => switchWorkspace(ws.id)}
-                  className="px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5"
                   style={{
                     background: workspaceId === ws.id ? 'var(--surface-2)' : 'transparent',
                     color: workspaceId === ws.id ? 'var(--text)' : 'var(--muted)',
                   }}
                 >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: workspaceId === ws.id ? 'var(--accent)' : 'var(--subtle)' }}
-                  />
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: workspaceId === ws.id ? 'var(--accent-light)' : 'var(--dim)' }} />
                   {ws.name}
                 </button>
               ))}
             </div>
-
-            {isTeam && (
-              <Link
-                href="/dashboard/team"
-                className="text-xs px-3 py-1.5 rounded-lg border transition-all"
-                style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}
-              >
-                Team view →
-              </Link>
-            )}
-
-            {canInvite && (
-              <button
-                onClick={() => setShowInvite(true)}
-                className="text-xs px-3 py-1.5 rounded-lg border transition-all ml-auto"
-                style={{ borderColor: 'rgba(59,130,246,0.3)', color: 'var(--accent)', background: 'rgba(59,130,246,0.05)' }}
-              >
-                + Invite
-              </button>
-            )}
           </div>
         )}
+      </header>
 
-        {/* When only one workspace but it's a team — still show Invite and Team view */}
-        {workspaces.length === 1 && isTeam && (
-          <div className="flex items-center gap-2 mb-6 justify-end">
-            <Link
-              href="/dashboard/team"
-              className="text-xs px-3 py-1.5 rounded-lg border transition-all"
-              style={{ borderColor: 'var(--border)', color: 'var(--muted)' }}
-            >
-              Team view →
-            </Link>
-            {canInvite && (
-              <button
-                onClick={() => setShowInvite(true)}
-                className="text-xs px-3 py-1.5 rounded-lg border transition-all"
-                style={{ borderColor: 'rgba(59,130,246,0.3)', color: 'var(--accent)', background: 'rgba(59,130,246,0.05)' }}
-              >
-                + Invite
-              </button>
-            )}
-          </div>
-        )}
+      <div className="container-app py-8">
 
-        {/* ── Greeting + meta ───────────────────── */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-1">
-            <h1 className="font-display text-2xl font-bold">Good work, {displayName}.</h1>
-
-            {/* Claude connection badge */}
-            {claudeConnected === true && (
-              <span
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
-                style={{ background: 'rgba(34,197,94,0.1)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.2)' }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#22C55E' }} />
-                Claude connected
-              </span>
-            )}
-            {claudeConnected === false && (
-              <Link
-                href="/onboarding"
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full transition-all"
-                style={{ background: 'rgba(59,130,246,0.07)', color: 'var(--accent)', border: '1px solid rgba(59,130,246,0.2)' }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--accent)', opacity: 0.5 }} />
-                Connect Claude →
-              </Link>
-            )}
-
-            {/* Plan badge */}
-            {plan === 'free' && (
-              <a
-                href="/#pricing"
-                className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full transition-all"
-                style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--subtle)', border: '1px solid rgba(255,255,255,0.07)' }}
-                title="Upgrade to Pro for unlimited tasks"
-              >
-                Free
-              </a>
-            )}
-            {plan === 'personal' && (
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.1)', color: 'var(--accent)' }}>
-                Pro
-              </span>
-            )}
-            {plan === 'team' && (
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(234,179,8,0.1)', color: '#EAB308' }}>
-                Team
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--muted)' }}>
-            <span>
-              Tracked today:{' '}
-              <span style={{ color: trackedSeconds > 0 ? 'var(--text)' : 'var(--muted)' }}>
-                {loading ? '—' : trackedSeconds > 0 ? formatDuration(trackedSeconds) : '0m'}
-              </span>
-            </span>
-            {lastActivity && (
-              <span>
-                Last activity:{' '}
-                <span style={{ color: 'var(--text)' }}>{formatTime(lastActivity.end_time!)}</span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* ── Today's Focus ─────────────────────── */}
-        <div
-          className="card px-4 py-4 mb-6 flex items-center gap-4"
-          style={{
-            borderColor: activeSession ? 'rgba(59,130,246,0.3)' : 'var(--border)',
-            background: activeSession ? 'rgba(59,130,246,0.04)' : 'var(--surface)',
-          }}
-        >
+        {/* ── Hero grid: Focus + Stats ─────────── */}
+        <section className="grid lg:grid-cols-3 gap-4 mb-8">
+          {/* Focus panel — spans 2 cols */}
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: activeSession ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.04)' }}
+            className="lg:col-span-2 relative overflow-hidden rounded-2xl p-6"
+            style={{
+              background: activeSession
+                ? 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.06) 100%)'
+                : 'var(--surface)',
+              border: `1px solid ${activeSession ? 'rgba(99,102,241,0.3)' : 'var(--border)'}`,
+            }}
           >
-            {activeSession ? (
-              <span style={{ color: '#3B82F6', fontSize: 16 }}>⏱</span>
-            ) : (
-              <span style={{ color: 'var(--subtle)', fontSize: 14 }}>◎</span>
-            )}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            {activeSession ? (
-              <>
-                <p className="text-xs font-medium mb-0.5" style={{ color: 'var(--accent)' }}>
-                  Focus session active
-                </p>
-                <p className="text-sm truncate" style={{ color: 'var(--text)' }}>
-                  {activeTask?.title ?? 'General focus'}
-                  <span className="ml-2 font-mono text-xs" style={{ color: 'var(--muted)' }}>
-                    {formatDuration(sessionSeconds)}
-                  </span>
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-xs" style={{ color: 'var(--muted)' }}>No active focus session</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--subtle)' }}>
-                  Hit ▶ on a task to start tracking
-                </p>
-              </>
-            )}
-          </div>
-
-          {activeSession && (
-            <button
-              onClick={handleStopFocus}
-              disabled={focusLoading === 'stop'}
-              className="shrink-0 text-xs px-3 py-1.5 rounded-lg border transition-all"
-              style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#FCA5A5', background: 'rgba(239,68,68,0.07)' }}
-            >
-              {focusLoading === 'stop' ? '…' : '■ Stop'}
-            </button>
-          )}
-        </div>
-
-        {/* ── Stats ─────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          {[
-            { label: 'Total', value: counts.total },
-            { label: 'In progress', value: counts.inProgress, highlight: true },
-            { label: 'Completed', value: counts.done },
-            { label: 'Time today', value: loading ? '—' : trackedSeconds > 0 ? formatDuration(trackedSeconds) : '—', small: true },
-          ].map(({ label, value, highlight, small }) => (
-            <div key={label} className="card px-3 py-3">
+            {activeSession && (
               <div
-                className={`font-display font-bold mb-0.5 ${small ? 'text-lg' : 'text-2xl'}`}
-                style={{ color: highlight ? 'var(--accent)' : 'var(--text)' }}
-              >
-                {loading ? '—' : value}
+                className="absolute inset-x-0 top-0 h-px"
+                style={{ background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.8), transparent)' }}
+              />
+            )}
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="eyebrow mb-2">{activeSession ? 'Focus session · active' : 'Focus session · idle'}</p>
+                {activeSession ? (
+                  <>
+                    <p className="text-xl font-display font-semibold truncate" style={{ color: 'var(--text)', letterSpacing: '-0.02em' }}>
+                      {activeTask?.title ?? 'General focus'}
+                    </p>
+                    <p className="text-sm mt-1 font-mono" style={{ color: 'var(--accent-light)' }}>
+                      {formatDuration(sessionSeconds)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl font-display font-semibold" style={{ color: 'var(--text-soft)', letterSpacing: '-0.02em' }}>
+                      No active session
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: 'var(--muted)' }}>
+                      Hit ▶ on a task below — or start via Claude.
+                    </p>
+                  </>
+                )}
               </div>
-              <div className="text-xs" style={{ color: 'var(--muted)' }}>{label}</div>
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                style={{
+                  background: activeSession ? 'rgba(99,102,241,0.18)' : 'var(--surface-2)',
+                  border: `1px solid ${activeSession ? 'rgba(99,102,241,0.35)' : 'var(--border)'}`,
+                  color: activeSession ? 'var(--accent-light)' : 'var(--muted)',
+                  fontSize: 17,
+                }}
+              >
+                {activeSession ? '⏱' : '◎'}
+              </div>
             </div>
-          ))}
-        </div>
+
+            {activeSession && (
+              <div className="mt-5 flex items-center gap-2">
+                <button
+                  onClick={handleStopFocus}
+                  disabled={focusLoading === 'stop'}
+                  className="btn-ghost text-xs"
+                  style={{ borderColor: 'rgba(239,68,68,0.35)', color: '#fca5a5', background: 'rgba(239,68,68,0.08)' }}
+                >
+                  {focusLoading === 'stop' ? '…' : '■ Stop session'}
+                </button>
+                <Link href="/dashboard/sessions" className="btn-ghost text-xs">
+                  Session history →
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Right column: Time + In progress */}
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+            <Stat
+              label="Time today"
+              value={loading ? '—' : trackedSeconds > 0 ? formatDuration(trackedSeconds) : '0m'}
+              sub={lastActivity ? `last at ${formatTime(lastActivity.end_time!)}` : 'no activity yet'}
+              accent
+            />
+            <Stat
+              label="In progress"
+              value={loading ? '—' : counts.inProgress}
+              sub={`${counts.total} total · ${counts.done} done`}
+            />
+          </div>
+        </section>
+
+        {/* ── Quick stats ─────────────────────── */}
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+          <Stat label="Total tasks" value={loading ? '—' : counts.total} />
+          <Stat label="Active" value={loading ? '—' : counts.inProgress} accent />
+          <Stat label="Completed" value={loading ? '—' : counts.done} sub={counts.done === 1 ? 'task' : 'tasks'} />
+          <Stat
+            label="Focus (today)"
+            value={loading ? '—' : trackedSeconds > 0 ? formatDuration(trackedSeconds) : '—'}
+            sub={trackedSeconds > 0 ? 'good streak' : 'start a session'}
+          />
+        </section>
 
         {/* ── Activity heatmap ──────────────────── */}
         {workspaceId && cachedToken && (
@@ -962,11 +948,11 @@ export default function DashboardPage() {
         {!loading && claudeConnected === false ? (
           <div
             className="rounded-xl p-5 mb-6 flex items-start gap-4"
-            style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}
+            style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)' }}
           >
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-              style={{ background: 'rgba(59,130,246,0.15)' }}
+              style={{ background: 'rgba(99,102,241,0.15)' }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                 <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -985,7 +971,7 @@ export default function DashboardPage() {
         ) : (
           <div
             className="flex items-start gap-3 px-4 py-3 rounded-lg text-sm mb-6"
-            style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.1)' }}
+            style={{ background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.1)' }}
           >
             <span style={{ color: 'var(--accent)' }} className="mt-0.5 shrink-0">✦</span>
             <div style={{ color: 'var(--muted)' }} className="text-xs">
@@ -995,40 +981,46 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* ── Tasks section header ─────────────── */}
+        <div className="flex items-end justify-between gap-4 mb-4 mt-2">
+          <div>
+            <p className="eyebrow mb-1.5">Tasks</p>
+            <h2 className="heading text-base font-semibold">Today&apos;s board</h2>
+          </div>
+          <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            {(['active', 'done', 'all'] as Filter[]).map((val) => (
+              <button
+                key={val}
+                onClick={() => setFilter(val)}
+                className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+                style={{
+                  background: filter === val ? 'var(--surface-2)' : 'transparent',
+                  color: filter === val ? 'var(--text)' : 'var(--muted)',
+                }}
+              >
+                {val === 'active' ? 'Active' : val === 'done' ? 'Completed' : 'All'}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* ── Add task ──────────────────────────── */}
-        <form onSubmit={addTask} className="flex gap-2 mb-5">
+        <form onSubmit={addTask} className="flex gap-2 mb-4">
           <input
             type="text"
             className="input flex-1"
-            placeholder="Quick add a task…"
+            placeholder="Quick add a task… or ask Claude to create one"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
           />
           <button
             type="submit"
-            className="amber-btn px-5 py-2.5 rounded-lg text-sm shrink-0"
+            className="btn-primary shrink-0"
             disabled={creating || !newTitle.trim()}
           >
-            {creating ? '…' : '+ Add'}
+            {creating ? '…' : '+ Add task'}
           </button>
         </form>
-
-        {/* ── Filter tabs ───────────────────────── */}
-        <div className="flex gap-1 mb-4 p-1 rounded-lg w-fit" style={{ background: 'var(--surface)' }}>
-          {(['active', 'done', 'all'] as Filter[]).map((val) => (
-            <button
-              key={val}
-              onClick={() => setFilter(val)}
-              className="px-4 py-1.5 rounded text-xs font-medium transition-all"
-              style={{
-                background: filter === val ? 'var(--surface-2)' : 'transparent',
-                color: filter === val ? 'var(--text)' : 'var(--muted)',
-              }}
-            >
-              {val === 'active' ? 'Active' : val === 'done' ? 'Completed' : 'All'}
-            </button>
-          ))}
-        </div>
 
         {/* ── Project filter ────────────────────── */}
         {projects.length > 0 && (
@@ -1040,7 +1032,7 @@ export default function DashboardPage() {
                 background: projectFilter === null ? 'var(--surface-2)' : 'transparent',
                 color: projectFilter === null ? 'var(--text)' : 'var(--subtle)',
                 border: '1px solid',
-                borderColor: projectFilter === null ? 'rgba(59,130,246,0.3)' : 'transparent',
+                borderColor: projectFilter === null ? 'rgba(99,102,241,0.3)' : 'transparent',
               }}
             >
               All
@@ -1051,10 +1043,10 @@ export default function DashboardPage() {
                 onClick={() => setProjectFilter(p.id === projectFilter ? null : p.id)}
                 className="px-2.5 py-1 rounded text-xs transition-all"
                 style={{
-                  background: projectFilter === p.id ? 'rgba(59,130,246,0.1)' : 'transparent',
+                  background: projectFilter === p.id ? 'rgba(99,102,241,0.1)' : 'transparent',
                   color: projectFilter === p.id ? 'var(--accent)' : 'var(--subtle)',
                   border: '1px solid',
-                  borderColor: projectFilter === p.id ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.06)',
+                  borderColor: projectFilter === p.id ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.06)',
                 }}
               >
                 {p.name}
@@ -1071,12 +1063,11 @@ export default function DashboardPage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-14" style={{ color: 'var(--muted)' }}>
-            <div className="text-3xl mb-3" style={{ opacity: 0.2 }}>◎</div>
-            <p className="text-sm">
-              {filter === 'done' ? 'No completed tasks yet.' : 'No active tasks. Add one above or ask Claude.'}
-            </p>
-          </div>
+          <EmptyState
+            icon={<span style={{ fontSize: 14 }}>◎</span>}
+            title={filter === 'done' ? 'No completed tasks yet.' : 'Nothing on your board yet.'}
+            description={filter === 'done' ? 'Finish a task and it will land here.' : 'Add one above, or ask Claude to create it.'}
+          />
         ) : (
           <div className="space-y-2">
             {filtered.map((task) => {
@@ -1085,7 +1076,7 @@ export default function DashboardPage() {
                 <div
                   key={task.id}
                   className="card flex items-center gap-3 px-4 py-3 group"
-                  style={{ borderColor: isActive ? 'rgba(59,130,246,0.3)' : undefined }}
+                  style={{ borderColor: isActive ? 'rgba(99,102,241,0.3)' : undefined }}
                 >
                   <button
                     onClick={() => cycleStatus(task)}
@@ -1126,7 +1117,7 @@ export default function DashboardPage() {
                       className="shrink-0 text-xs px-2.5 py-1 rounded-lg border transition-all opacity-0 group-hover:opacity-100"
                       style={isActive
                         ? { borderColor: 'rgba(239,68,68,0.3)', color: '#FCA5A5', background: 'rgba(239,68,68,0.07)' }
-                        : { borderColor: 'rgba(59,130,246,0.25)', color: 'var(--accent)', background: 'rgba(59,130,246,0.06)' }
+                        : { borderColor: 'rgba(99,102,241,0.25)', color: 'var(--accent)', background: 'rgba(99,102,241,0.06)' }
                       }
                     >
                       {focusLoading === task.id ? '…' : isActive ? '■' : '▶'}
@@ -1140,11 +1131,17 @@ export default function DashboardPage() {
 
         {/* ── Today's log ───────────────────────── */}
         {activities.length > 0 && (
-          <div className="mt-8">
-            <p className="text-xs font-medium mb-3 uppercase tracking-wide" style={{ color: 'var(--subtle)' }}>
-              Today&apos;s log
-            </p>
-            <div className="space-y-1">
+          <div className="mt-10">
+            <div className="flex items-end justify-between mb-4">
+              <div>
+                <p className="eyebrow mb-1.5">Activity</p>
+                <h2 className="heading text-base font-semibold">Today&apos;s log</h2>
+              </div>
+              <Link href="/dashboard/sessions" className="btn-ghost text-xs">
+                Full history →
+              </Link>
+            </div>
+            <div className="rounded-xl p-2" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               {[...activities]
                 .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
                 .slice(0, 8)
@@ -1154,20 +1151,20 @@ export default function DashboardPage() {
                     ? Math.floor((new Date(act.end_time).getTime() - new Date(act.start_time).getTime()) / 1000)
                     : null;
                   return (
-                    <div key={act.id} className="flex items-center gap-3 py-1.5">
-                      <span className="text-xs font-mono shrink-0 w-10" style={{ color: 'var(--subtle)' }}>
+                    <div key={act.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/[0.02] transition-colors">
+                      <span className="text-xs font-mono shrink-0 w-12" style={{ color: 'var(--subtle)' }}>
                         {formatTime(act.start_time)}
                       </span>
                       <div
                         className="w-1.5 h-1.5 rounded-full shrink-0"
-                        style={{ background: act.end_time ? '#22C55E' : '#3B82F6' }}
+                        style={{ background: act.end_time ? 'var(--success)' : 'var(--accent-light)' }}
                       />
                       <span className="text-xs flex-1 truncate" style={{ color: 'var(--muted)' }}>
                         {act.end_time ? 'Focused on' : 'Focusing on'}{' '}
                         <span style={{ color: 'var(--text)' }}>{t?.title ?? 'General'}</span>
                       </span>
                       {dur !== null && (
-                        <span className="text-xs shrink-0 font-mono" style={{ color: 'var(--subtle)' }}>
+                        <span className="text-xs shrink-0 font-mono" style={{ color: 'var(--text-soft)' }}>
                           {formatDuration(dur)}
                         </span>
                       )}

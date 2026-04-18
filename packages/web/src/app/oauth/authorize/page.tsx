@@ -103,40 +103,45 @@ function OAuthConsent() {
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            'radial-gradient(ellipse at 50% 30%, rgba(59,130,246,0.07) 0%, transparent 65%)',
+            'radial-gradient(ellipse at 50% 30%, rgba(99,102,241,0.07) 0%, transparent 65%)',
         }}
       />
-      <div className="grid-bg absolute inset-0 opacity-50" />
+      <div className="grid-bg absolute inset-0 opacity-40" />
 
-      <div className="relative card p-8 max-w-sm w-full">
-        {/* Icon */}
-        <div
-          className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5"
-          style={{
-            background: 'rgba(59,130,246,0.1)',
-            border: '1px solid rgba(59,130,246,0.3)',
-          }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-              stroke="#3B82F6"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+      <div className="relative card-elev p-8 max-w-md w-full">
+        <div className="flex items-center gap-3 mb-6">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.18) 0%, rgba(139,92,246,0.18) 100%)',
+              border: '1px solid rgba(99,102,241,0.3)',
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M13 10V3L4 14h7v7l9-11h-7z"
+                stroke="var(--accent-light)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="eyebrow mb-0.5">OAuth · authorize</p>
+            <h1 className="heading text-lg font-semibold" style={{ letterSpacing: '-0.02em' }}>
+              Connect Claude Code
+            </h1>
+          </div>
         </div>
 
-        <h1 className="font-display text-xl font-bold mb-1 text-center">
-          Connect Claude Code
-        </h1>
-        <p className="text-sm text-center mb-1" style={{ color: 'var(--muted)' }}>
-          Claude Code is requesting access to your Tendon workspace
+        <p className="text-sm mb-1" style={{ color: 'var(--text-soft)' }}>
+          <span className="font-semibold" style={{ color: 'var(--text)' }}>Claude Code</span> is requesting
+          access to your Tendon workspace.
         </p>
-        <p className="text-xs text-center mb-6" style={{ color: 'var(--subtle)' }}>
-          as{' '}
-          <span style={{ color: 'var(--text)' }}>
+        <p className="text-xs mb-6" style={{ color: 'var(--muted)' }}>
+          Signed in as{' '}
+          <span className="font-mono" style={{ color: 'var(--text-soft)' }}>
             {user?.emailAddresses[0]?.emailAddress}
           </span>
         </p>
@@ -144,77 +149,93 @@ function OAuthConsent() {
         {/* Workspace selector */}
         {workspaces.length > 1 && (
           <div className="mb-5">
-            <p className="text-xs font-medium mb-2" style={{ color: 'var(--muted)' }}>
-              Connect to workspace:
-            </p>
+            <p className="eyebrow mb-2.5">Connect to workspace</p>
             <div className="space-y-1.5">
-              {workspaces.map((ws) => (
-                <button
-                  key={ws.id}
-                  onClick={() => setSelectedWorkspaceId(ws.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-all text-sm"
-                  style={{
-                    borderColor:
-                      selectedWorkspaceId === ws.id
-                        ? 'rgba(59,130,246,0.5)'
-                        : 'var(--border)',
-                    background:
-                      selectedWorkspaceId === ws.id
-                        ? 'rgba(59,130,246,0.06)'
-                        : 'transparent',
-                    color: 'var(--text)',
-                  }}
-                >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
+              {workspaces.map((ws) => {
+                const active = selectedWorkspaceId === ws.id;
+                const isTeam = ws.type === 'team';
+                return (
+                  <button
+                    key={ws.id}
+                    onClick={() => setSelectedWorkspaceId(ws.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-all text-sm"
                     style={{
-                      background:
-                        selectedWorkspaceId === ws.id ? '#3B82F6' : 'var(--subtle)',
+                      borderColor: active ? 'rgba(99,102,241,0.5)' : 'var(--border)',
+                      background: active ? 'rgba(99,102,241,0.06)' : 'transparent',
+                      color: 'var(--text)',
                     }}
-                  />
-                  <span className="flex-1 truncate">{ws.name}</span>
-                  <span
-                    className="text-xs shrink-0"
-                    style={{ color: 'var(--subtle)' }}
                   >
-                    {ws.type}
-                  </span>
-                </button>
-              ))}
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs font-display font-semibold"
+                      style={{
+                        background: isTeam
+                          ? 'linear-gradient(135deg, #eab308 0%, #f59e0b 100%)'
+                          : 'linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%)',
+                        color: '#fff',
+                      }}
+                    >
+                      {ws.name[0]?.toUpperCase()}
+                    </div>
+                    <span className="flex-1 truncate">{ws.name}</span>
+                    <span
+                      className="badge shrink-0 capitalize"
+                      style={{
+                        fontSize: 10,
+                        color: isTeam ? '#fcd34d' : 'var(--accent-light)',
+                        borderColor: isTeam ? 'rgba(234,179,8,0.28)' : 'rgba(99,102,241,0.25)',
+                        background: isTeam ? 'rgba(234,179,8,0.06)' : 'rgba(99,102,241,0.05)',
+                      }}
+                    >
+                      {ws.type}
+                    </span>
+                    {active && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0">
+                        <path d="M5 12l4.5 4.5L19 7" stroke="var(--accent-light)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
 
         {/* Permissions */}
         <div
-          className="space-y-2 mb-6 p-4 rounded-lg"
-          style={{ background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.1)' }}
+          className="p-4 rounded-lg mb-6"
+          style={{ background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)' }}
         >
-          <p className="text-xs font-medium mb-2" style={{ color: 'var(--muted)' }}>
-            Claude will be able to
-            {selectedWs ? (
-              <span style={{ color: 'var(--text)' }}> in &ldquo;{selectedWs.name}&rdquo;</span>
-            ) : ''}:
+          <p className="eyebrow mb-3">
+            Permissions{selectedWs ? ` · in “${selectedWs.name}”` : ''}
           </p>
-          {[
-            'View and create tasks',
-            'Log focus sessions and time',
-            'Read your workspace plan',
-          ].map((item) => (
-            <div key={item} className="flex items-center gap-2 text-xs">
-              <span style={{ color: 'var(--accent)' }}>✓</span>
-              <span>{item}</span>
-            </div>
-          ))}
+          <div className="space-y-2.5">
+            {[
+              { label: 'View and create tasks', scope: 'tasks:read tasks:write' },
+              { label: 'Log focus sessions and time', scope: 'sessions:write' },
+              { label: 'Read your workspace plan', scope: 'workspace:read' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-start gap-2.5 text-xs">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
+                  <path d="M5 12l4.5 4.5L19 7" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <div className="flex-1 min-w-0">
+                  <p style={{ color: 'var(--text-soft)' }}>{item.label}</p>
+                  <p className="font-mono text-[10px] mt-0.5" style={{ color: 'var(--subtle)' }}>
+                    {item.scope}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {error && (
           <div
-            className="text-sm mb-4 px-3 py-2.5 rounded-lg"
+            className="text-xs mb-4 px-3 py-2.5 rounded-lg"
             style={{
               background: 'rgba(239,68,68,0.08)',
-              color: '#FCA5A5',
-              border: '1px solid rgba(239,68,68,0.2)',
+              color: '#fca5a5',
+              border: '1px solid rgba(239,68,68,0.22)',
             }}
           >
             {error}
@@ -224,18 +245,18 @@ function OAuthConsent() {
         <button
           onClick={allow}
           disabled={loading || !selectedWorkspaceId}
-          className="amber-btn w-full py-3 rounded-lg text-sm mb-2"
+          className="btn-accent w-full mb-2"
         >
           {loading ? 'Authorizing…' : 'Allow access'}
         </button>
 
-        <button
-          onClick={deny}
-          className="w-full py-2.5 text-sm rounded-lg transition-colors"
-          style={{ color: 'var(--muted)' }}
-        >
-          Cancel
+        <button onClick={deny} className="w-full py-2.5 text-xs transition-colors" style={{ color: 'var(--muted)' }}>
+          Cancel and return
         </button>
+
+        <p className="text-[10px] text-center mt-5 font-mono" style={{ color: 'var(--dim)' }}>
+          OAuth 2.1 · PKCE · state verified
+        </p>
       </div>
     </div>
   );

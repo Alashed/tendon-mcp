@@ -3,53 +3,118 @@
 @tailwind utilities;
 
 :root {
-  --bg: #09090b;
-  --surface: #111115;
-  --surface-2: #1a1a20;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-hover: rgba(255, 255, 255, 0.14);
-  --accent: #3B82F6;
-  --accent-light: #fcd34d;
-  --accent-dim: rgba(59, 130, 246, 0.12);
-  --text: #fafafa;
-  --muted: #71717a;
-  --subtle: #3f3f46;
+  --bg: #08080b;
+  --bg-soft: #0c0c10;
+  --surface: #101014;
+  --surface-2: #16161c;
+  --surface-3: #1d1d25;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --accent: #6366f1;
+  --accent-2: #8b5cf6;
+  --accent-light: #a5b4fc;
+  --accent-dim: rgba(99, 102, 241, 0.12);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --text: #f4f4f5;
+  --text-soft: #d4d4d8;
+  --muted: #a1a1aa;        /* zinc-400 — secondary text, AA on --bg */
+  --subtle: #8b8b94;       /* was #52525b — теперь читаемо (AA 5.2:1) */
+  --dim: #52525b;          /* для decoration (bullets, dividers) */
+  --faint: #3f3f46;        /* только для borders/decoration */
 }
 
 * {
   box-sizing: border-box;
 }
 
+/* ──────────────────────────────────────────────────────────
+   Layout containers (ONE source of truth for max-widths & gutters)
+   Use:
+     .container-app     → app shell (dashboards, landing hero/nav)
+     .container-reading → reading/forms/settings/landing sections
+     .container-narrow  → focused single-column (onboarding, auth, CTA)
+   Gutters: 24px mobile, 32px md+
+   ─────────────────────────────────────────────────────── */
+:root {
+  --container-app: 1152px;       /* ≈ Tailwind 6xl */
+  --container-reading: 768px;    /* ≈ 3xl */
+  --container-narrow: 560px;     /* ≈ xl / 2xl mid */
+  --gutter: 24px;
+  --gutter-lg: 32px;
+}
+.container-app,
+.container-reading,
+.container-narrow {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+@media (min-width: 768px) {
+  .container-app,
+  .container-reading,
+  .container-narrow {
+    padding-left: var(--gutter-lg);
+    padding-right: var(--gutter-lg);
+  }
+}
+.container-app     { max-width: var(--container-app); }
+.container-reading { max-width: var(--container-reading); }
+.container-narrow  { max-width: var(--container-narrow); }
+
 html {
   scroll-behavior: smooth;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: var(--font-outfit), system-ui, sans-serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 600;
 }
 
 /* Thin scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
+  background: var(--dim);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
   background: var(--subtle);
-  border-radius: 2px;
+}
+
+::selection {
+  background: var(--accent-dim);
+  color: var(--text);
 }
 
 /* ── Animations ─────────────────────────────────── */
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -77,18 +142,27 @@ body {
   50% { transform: translateY(-6px); }
 }
 
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 .animate-fade-up {
-  animation: fade-up 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   opacity: 0;
 }
 
 .animate-fade-in {
-  animation: fade-in 0.5s ease-out forwards;
+  animation: fade-in 0.6s ease-out forwards;
   opacity: 0;
 }
 
 .animate-blink {
   animation: blink 1.1s step-end infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2.4s ease-in-out infinite;
 }
 
 .delay-100 { animation-delay: 100ms; }
@@ -100,88 +174,260 @@ body {
 .delay-700 { animation-delay: 700ms; }
 .delay-800 { animation-delay: 800ms; }
 
-/* ── Grid background ────────────────────────────── */
+/* ── Backgrounds ────────────────────────────────── */
 .grid-bg {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 64px 64px;
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 72px 72px;
 }
 
-/* ── Components ─────────────────────────────────── */
-.amber-btn {
-  background: var(--accent);
-  color: #000;
+.dot-bg {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.glow-bg {
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
+    radial-gradient(800px 400px at 85% 20%, rgba(139, 92, 246, 0.12), transparent 60%);
+}
+
+/* ── Typography helpers ─────────────────────────── */
+.font-display { font-family: var(--font-display), var(--font-sans), sans-serif; }
+.font-mono { font-family: var(--font-mono), ui-monospace, monospace; }
+
+.display-1 {
+  font-family: var(--font-display), sans-serif;
   font-weight: 600;
-  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+  font-size: clamp(2.75rem, 7vw, 5.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+.display-2 {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 600;
+  font-size: clamp(2rem, 4.5vw, 3.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.heading {
+  font-family: var(--font-display), sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Buttons ────────────────────────────────────── */
+.btn-primary {
+  background: var(--text);
+  color: #0a0a0c;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  padding: 11px 20px;
+  border-radius: 10px;
+  transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
 }
-.amber-btn:hover {
-  background: var(--accent-light);
-  box-shadow: 0 0 24px rgba(59, 130, 246, 0.35);
+.btn-primary:hover {
+  background: #fff;
+  box-shadow: 0 8px 24px -8px rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
 }
-.amber-btn:active {
-  transform: scale(0.98);
+.btn-primary:active {
+  transform: translateY(0);
 }
-.amber-btn:disabled {
-  opacity: 0.5;
+.btn-primary:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
+.btn-accent {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 11px 20px;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.btn-accent:hover {
+  box-shadow: 0 10px 28px -10px rgba(99, 102, 241, 0.6);
+  transform: translateY(-1px);
+}
+.btn-accent:active { transform: translateY(0); }
+.btn-accent:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-soft);
+  font-weight: 500;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-ghost:hover {
+  background: var(--surface-2);
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+/* legacy alias (используется в существующих компонентах) */
+.amber-btn {
+  background: var(--text);
+  color: #0a0a0c;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+.amber-btn:hover {
+  background: #fff;
+  box-shadow: 0 8px 24px -8px rgba(255, 255, 255, 0.25);
+}
+.amber-btn:active { transform: scale(0.99); }
+.amber-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Cards ──────────────────────────────────────── */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  transition: border-color 0.2s;
+  border-radius: 14px;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
 .card:hover {
   border-color: var(--border-hover);
+  background: var(--surface-2);
 }
 
+.card-elev {
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 100%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 24px 48px -24px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Terminal / code ────────────────────────────── */
 .terminal-cmd {
   font-family: var(--font-mono), ui-monospace, monospace;
-  background: rgba(59, 130, 246, 0.04);
-  border: 1px solid rgba(59, 130, 246, 0.2);
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.22);
   border-radius: 10px;
-  padding: 16px 20px;
+  padding: 14px 18px;
   color: var(--accent-light);
+  font-size: 13px;
 }
 
+.kbd {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 11px;
+  color: var(--text-soft);
+}
+
+/* ── Inputs ─────────────────────────────────────── */
 .input {
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 11px 14px;
+  border-radius: 10px;
+  padding: 12px 14px;
   color: var(--text);
-  font-family: var(--font-outfit), system-ui, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   font-size: 14px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
   outline: none;
   appearance: none;
 }
+.input:hover {
+  border-color: var(--border-hover);
+}
 .input:focus {
-  border-color: rgba(59, 130, 246, 0.45);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+  border-color: rgba(99, 102, 241, 0.55);
+  background: var(--surface-2);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
 }
 .input::placeholder {
   color: var(--subtle);
 }
 
-/* Amber glow text effect */
-.text-amber-glow {
-  text-shadow: 0 0 40px rgba(59, 130, 246, 0.5);
+/* ── Badges ─────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  background: var(--surface);
 }
 
-/* Shimmer gradient text */
+.badge-accent {
+  border-color: rgba(99, 102, 241, 0.28);
+  color: var(--accent-light);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.badge-success {
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.badge-warning {
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+/* ── Text effects ───────────────────────────────── */
+.text-amber-glow {
+  text-shadow: 0 0 40px rgba(99, 102, 241, 0.45);
+}
+
 .text-shimmer {
   background: linear-gradient(
     120deg,
-    var(--accent) 0%,
+    var(--text) 0%,
     var(--accent-light) 40%,
-    var(--accent) 60%,
+    var(--text) 60%,
     var(--accent-light) 100%
   );
   background-size: 200% auto;
@@ -189,4 +435,18 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: shimmer 4s linear infinite;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--text) 0%, var(--accent-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Dividers ───────────────────────────────────── */
+.hr-soft {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-hover), transparent);
+  border: 0;
 }

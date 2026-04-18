@@ -1,9 +1,10 @@
 import { SignUp } from '@clerk/nextjs';
 import Link from 'next/link';
+import { Logo } from '@/components/ui';
 
 const clerkDark = {
   variables: {
-    colorPrimary: '#3B82F6',
+    colorPrimary: '#6366f1',
     colorBackground: '#111115',
     colorText: '#FAFAFA',
     colorTextSecondary: '#A1A1AA',
@@ -14,7 +15,7 @@ const clerkDark = {
     colorSuccess: '#4ADE80',
     colorWarning: '#FBBF24',
     borderRadius: '8px',
-    fontFamily: 'var(--font-outfit), system-ui, sans-serif',
+    fontFamily: 'var(--font-sans), system-ui, sans-serif',
     fontSize: '14px',
   },
   elements: {
@@ -25,7 +26,7 @@ const clerkDark = {
     },
     cardBox: { background: '#111115' },
     headerTitle: {
-      fontFamily: 'var(--font-syne), system-ui, sans-serif',
+      fontFamily: 'var(--font-display), system-ui, sans-serif',
       fontWeight: '700',
       color: '#FAFAFA',
     },
@@ -42,11 +43,11 @@ const clerkDark = {
     formFieldSuccessText: { color: '#4ADE80' },
     formFieldWarningText: { color: '#FBBF24' },
     formButtonPrimary: {
-      backgroundColor: '#3B82F6',
+      backgroundColor: '#6366f1',
       color: '#fff',
       fontWeight: '600',
     },
-    formButtonReset: { color: '#60A5FA' },
+    formButtonReset: { color: '#818cf8' },
     dividerLine: { background: 'rgba(255,255,255,0.07)' },
     dividerText: { color: '#52525B' },
     socialButtonsBlockButton: {
@@ -56,7 +57,7 @@ const clerkDark = {
     },
     socialButtonsBlockButtonText: { color: '#FAFAFA' },
     socialButtonsBlockButtonArrow: { color: '#71717A' },
-    footerActionLink: { color: '#60A5FA' },
+    footerActionLink: { color: '#818cf8' },
     footerActionText: { color: '#71717A' },
     footer: { background: '#111115', borderTop: '1px solid rgba(255,255,255,0.06)' },
     identityPreviewText: { color: '#FAFAFA' },
@@ -68,7 +69,7 @@ const clerkDark = {
       borderColor: 'rgba(255,255,255,0.1)',
       color: '#FAFAFA',
     },
-    formResendCodeLink: { color: '#60A5FA' },
+    formResendCodeLink: { color: '#818cf8' },
   },
 } as const;
 
@@ -76,35 +77,35 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex" style={{ background: 'var(--bg)' }}>
 
-      {/* ── SignUp side ─────────────────────────────── */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-[400px]">
-          <Link href="/" className="font-display font-bold text-lg mb-8 block text-center">
-            <span style={{ color: 'var(--accent)' }}>tendon</span>
-            <span style={{ color: 'var(--muted)' }}>.</span>
+          <Link href="/" className="inline-flex mb-8" aria-label="Tendon home">
+            <Logo size={32} withWordmark />
           </Link>
 
-          <SignUp
-            fallbackRedirectUrl="/onboarding"
-            signInUrl="/login"
-            appearance={clerkDark}
-          />
+          <div className="mb-6">
+            <p className="eyebrow mb-2">Get started</p>
+            <h1 className="heading text-2xl" style={{ letterSpacing: '-0.02em' }}>
+              Create your account
+            </h1>
+            <p className="text-sm mt-2" style={{ color: 'var(--muted)' }}>
+              2-minute setup · No credit card required.
+            </p>
+          </div>
+
+          <SignUp fallbackRedirectUrl="/onboarding" signInUrl="/login" appearance={clerkDark} />
         </div>
       </div>
 
-      {/* ── Preview side ─────────────────────────────── */}
       <div
-        className="hidden lg:flex flex-1 items-center justify-center p-12 relative border-l"
-        style={{ borderColor: 'var(--border)' }}
+        className="hidden lg:flex flex-1 items-center justify-center p-12 relative border-l overflow-hidden"
+        style={{ borderColor: 'var(--border)', background: 'var(--bg-soft)' }}
       >
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(ellipse at 30% 50%, rgba(59,130,246,0.06) 0%, transparent 65%)',
-          }}
-        />
-        <div className="relative max-w-xs space-y-3 animate-fade-in delay-300">
+        <div className="absolute inset-0 glow-bg pointer-events-none opacity-60" />
+        <div className="grid-bg absolute inset-0 opacity-40" />
+
+        <div className="relative max-w-xs space-y-3">
+          <p className="eyebrow mb-4">After signing up, you&apos;ll:</p>
           <p className="text-xs mb-5" style={{ color: 'var(--subtle)' }}>
             After signing up, you&apos;ll get:
           </p>
@@ -131,7 +132,7 @@ export default function RegisterPage() {
             <div
               key={label}
               className="card p-4"
-              style={{ borderColor: accent ? 'rgba(59,130,246,0.2)' : 'var(--border)' }}
+              style={{ borderColor: accent ? 'rgba(99,102,241,0.2)' : 'var(--border)' }}
             >
               <p className="text-xs mb-2" style={{ color: 'var(--subtle)' }}>
                 {label}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getTasks, createTask, updateTask, deleteTask, type Task } from '@/lib/api';
+import { EmptyState } from '@/components/ui';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.kz';
 
@@ -22,14 +23,14 @@ const STATUS_LABEL: Record<Task['status'], string> = {
 
 const STATUS_DOT: Record<Task['status'], string> = {
   planned: '#52525B',
-  in_progress: '#3B82F6',
+  in_progress: '#6366f1',
   done: '#22C55E',
   archived: '#3F3F46',
 };
 
 const PRIORITY_BADGE: Record<NonNullable<Task['priority']>, { bg: string; color: string }> = {
   high: { bg: 'rgba(239,68,68,0.12)', color: '#FCA5A5' },
-  medium: { bg: 'rgba(59,130,246,0.12)', color: '#93C5FD' },
+  medium: { bg: 'rgba(99,102,241,0.12)', color: '#a5b4fc' },
   low: { bg: 'rgba(82,82,91,0.4)', color: '#71717A' },
 };
 
@@ -149,63 +150,68 @@ export default function TasksPage() {
   ];
 
   return (
-    <div className="max-w-3xl mx-auto px-8 py-8">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold mb-1">Tasks</h1>
-        <p className="text-sm" style={{ color: 'var(--muted)' }}>
-          All tasks across your workspace. Manage and track progress.
-        </p>
-      </div>
-
-      {/* Workspace switcher */}
-      {workspaces.length > 1 && (
-        <div className="flex gap-1 p-1 rounded-lg w-fit mb-6" style={{ background: 'var(--surface)' }}>
-          {workspaces.map((ws) => (
-            <button
-              key={ws.id}
-              onClick={() => switchWorkspace(ws.id)}
-              className="px-3 py-1.5 rounded text-xs font-medium transition-all flex items-center gap-1.5"
-              style={{
-                background: workspaceId === ws.id ? 'var(--surface-2)' : 'transparent',
-                color: workspaceId === ws.id ? 'var(--text)' : 'var(--muted)',
-              }}
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: workspaceId === ws.id ? 'var(--accent)' : 'var(--subtle)' }}
-              />
-              {ws.name}
-            </button>
-          ))}
+    <div>
+      {/* Page header */}
+      <header
+        className="sticky top-0 z-20 pt-6 pb-5 border-b backdrop-blur-md"
+        style={{ borderColor: 'var(--border)', background: 'rgba(8, 8, 11, 0.78)' }}
+      >
+        <div className="container-app flex items-start justify-between gap-6 flex-wrap">
+          <div className="min-w-0">
+            <p className="eyebrow mb-1.5">Workspace</p>
+            <h1 className="heading text-2xl leading-tight tracking-tight">Tasks</h1>
+            <p className="text-sm mt-1.5" style={{ color: 'var(--muted)' }}>
+              All tasks across your workspace · {counts.in_progress} in progress · {counts.done} done
+            </p>
+          </div>
+          {workspaces.length > 1 && (
+            <div className="inline-flex gap-1 p-1 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              {workspaces.map((ws) => (
+                <button
+                  key={ws.id}
+                  onClick={() => switchWorkspace(ws.id)}
+                  className="px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5"
+                  style={{
+                    background: workspaceId === ws.id ? 'var(--surface-2)' : 'transparent',
+                    color: workspaceId === ws.id ? 'var(--text)' : 'var(--muted)',
+                  }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: workspaceId === ws.id ? 'var(--accent-light)' : 'var(--dim)' }} />
+                  {ws.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </header>
+
+      <div className="container-app py-8">
 
       {/* Add task */}
-      <form onSubmit={addTask} className="flex gap-2 mb-6">
+      <form onSubmit={addTask} className="flex gap-2 mb-5">
         <input
           type="text"
           className="input flex-1"
-          placeholder="Add a new task…"
+          placeholder="Add a new task… or ask Claude to create one"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
         />
         <button
           type="submit"
-          className="amber-btn px-5 py-2.5 rounded-lg text-sm shrink-0"
+          className="btn-primary shrink-0"
           disabled={creating || !newTitle.trim()}
         >
-          {creating ? '…' : '+ Add'}
+          {creating ? '…' : '+ Add task'}
         </button>
       </form>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 mb-5 p-1 rounded-lg w-fit overflow-x-auto" style={{ background: 'var(--surface)' }}>
+      <div className="inline-flex gap-1 mb-5 p-1 rounded-lg overflow-x-auto" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         {FILTERS.map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
-            className="px-3 py-1.5 rounded text-xs font-medium transition-all whitespace-nowrap"
+            className="px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap"
             style={{
               background: filter === key ? 'var(--surface-2)' : 'transparent',
               color: filter === key ? 'var(--text)' : 'var(--muted)',
@@ -220,28 +226,34 @@ export default function TasksPage() {
       {loading ? (
         <div className="space-y-2">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="card h-[52px] animate-pulse" style={{ animationDelay: `${i * 80}ms` }} />
+            <div key={i} className="card h-[56px] animate-pulse" style={{ animationDelay: `${i * 80}ms` }} />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16" style={{ color: 'var(--muted)' }}>
-          <div className="text-4xl mb-3" style={{ opacity: 0.15 }}>◎</div>
-          <p className="text-sm">No tasks yet. Add one above or ask Claude.</p>
-        </div>
+        <EmptyState
+          icon={<span style={{ fontSize: 14 }}>◎</span>}
+          title="Nothing on the board"
+          description="Add a task above — or ask Claude in your IDE and it'll show up here."
+        />
       ) : (
-        <div className="space-y-2">
-          {filtered.map((task) => (
-            <div key={task.id} className="card flex items-center gap-3 px-4 py-3 group">
-              {/* Status dot */}
+        <div className="rounded-xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          {filtered.map((task, idx) => (
+            <div
+              key={task.id}
+              className="flex items-center gap-3 px-4 py-3 group transition-colors hover:bg-white/[0.02]"
+              style={{ borderTop: idx > 0 ? '1px solid var(--border)' : 'none' }}
+            >
               <button
                 onClick={() => cycleStatus(task)}
                 className="shrink-0 transition-transform hover:scale-125"
                 title={`${STATUS_LABEL[task.status]} — click to advance`}
               >
-                <div className="w-2.5 h-2.5 rounded-full" style={{ background: STATUS_DOT[task.status] }} />
+                <div
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ background: STATUS_DOT[task.status], boxShadow: task.status === 'in_progress' ? '0 0 8px var(--accent-light)' : undefined }}
+                />
               </button>
 
-              {/* Title */}
               <div className="flex-1 min-w-0">
                 <p
                   className="text-sm truncate"
@@ -253,30 +265,31 @@ export default function TasksPage() {
                 >
                   {task.title}
                 </p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--subtle)' }}>
-                  {STATUS_LABEL[task.status]}
+                <p className="text-xs mt-0.5 flex items-center gap-2" style={{ color: 'var(--muted)' }}>
+                  <span>{STATUS_LABEL[task.status]}</span>
                   {task.source && task.source !== 'web' && (
-                    <span className="ml-2">via {task.source}</span>
+                    <>
+                      <span style={{ color: 'var(--dim)' }}>·</span>
+                      <span className="font-mono text-[10px]" style={{ color: 'var(--subtle)' }}>via {task.source}</span>
+                    </>
                   )}
                 </p>
               </div>
 
-              {/* Priority */}
               {task.priority && (
                 <span
-                  className="text-xs px-2 py-0.5 rounded shrink-0 font-medium"
+                  className="text-xs px-2 py-0.5 rounded-md shrink-0 font-medium capitalize"
                   style={PRIORITY_BADGE[task.priority]}
                 >
                   {task.priority}
                 </span>
               )}
 
-              {/* Delete */}
               <button
                 onClick={() => removeTask(task.id)}
                 disabled={deleting === task.id}
-                className="shrink-0 opacity-0 group-hover:opacity-100 transition-all p-1 rounded"
-                style={{ color: 'var(--subtle)' }}
+                className="shrink-0 opacity-0 group-hover:opacity-100 transition-all w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/[0.05]"
+                style={{ color: 'var(--muted)' }}
                 title="Delete task"
               >
                 {deleting === task.id ? (
@@ -291,6 +304,7 @@ export default function TasksPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

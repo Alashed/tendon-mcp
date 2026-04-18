@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { Logo } from '@/components/ui';
 
 const CLOUD_CMD = 'claude mcp add --transport http tendon https://api.tendon.alashed.kz/mcp';
 const CLI_CMD = 'npx tendon-cli';
@@ -16,63 +17,200 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+    <div className="min-h-screen relative" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+      <div className="absolute inset-x-0 top-0 h-[640px] glow-bg pointer-events-none" aria-hidden />
+      <div className="absolute inset-x-0 top-0 h-[640px] grid-bg pointer-events-none opacity-60" aria-hidden />
 
       {/* ── Nav ─────────────────────────────────────────────── */}
-      <nav className="flex items-center justify-between px-6 py-5 max-w-5xl mx-auto">
-        <span className="font-display font-bold text-lg tracking-tight select-none">
-          <span style={{ color: 'var(--accent)' }}>tendon</span>
-          <span style={{ color: 'var(--subtle)' }}>.</span>
-        </span>
-        <div className="flex items-center gap-5">
+      <nav className="container-app relative flex items-center justify-between py-5">
+        <Link href="/" aria-label="Tendon home" className="select-none">
+          <Logo size={32} withWordmark wordmarkSize="lg" />
+        </Link>
+        <div className="flex items-center gap-2 sm:gap-3">
           <a
             href="https://github.com/Alashed/tendon-mcp"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm transition-colors"
+            className="hidden sm:inline-block text-sm px-3 py-2 transition-colors"
             style={{ color: 'var(--muted)' }}
           >
             GitHub
           </a>
-          <Link href="/login" className="text-sm transition-colors" style={{ color: 'var(--muted)' }}>
+          <Link href="/login" className="text-sm px-3 py-2 transition-colors" style={{ color: 'var(--muted)' }}>
             Sign in
           </Link>
-          <Link href="/register" className="amber-btn text-sm px-4 py-2 rounded-lg">
+          <Link href="/register" className="btn-primary">
             Get started
           </Link>
         </div>
       </nav>
 
       {/* ── Hero ────────────────────────────────────────────── */}
-      <section className="px-6 pt-24 pb-20 max-w-3xl mx-auto">
+      <section className="container-app relative pt-16 sm:pt-24 pb-16">
+        <div className="grid lg:grid-cols-[1.15fr_1fr] gap-12 lg:gap-16 items-center">
+          {/* Left: copy + CTAs */}
+          <div className="min-w-0">
+            <div className="badge mb-6">
+              <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse-soft" style={{ background: 'var(--success)' }} />
+              Open source · MCP · OAuth 2.1
+            </div>
 
-        <p className="text-xs font-mono mb-6 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-          Open source · MCP · OAuth 2.1
-        </p>
+            <h1 className="display-1 mb-6">
+              Auto-tracks your work.<br />
+              <span className="text-shimmer">Daily plan. Every day.</span>
+            </h1>
 
-        <h1
-          className="font-display font-bold leading-[1.05] tracking-tight mb-6"
-          style={{ fontSize: 'clamp(2.8rem, 7vw, 4.5rem)' }}
-        >
-          Auto-tracks your work.<br />
-          <span className="text-shimmer">Daily plan. Every day.</span>
-        </h1>
+            <p className="text-lg leading-relaxed mb-3 max-w-xl" style={{ color: 'var(--text-soft)' }}>
+              Tendon collects everything you do in Claude Code and delivers a clear daily report and plan.
+              No manual input. No context switching.
+            </p>
+            <p className="text-base leading-relaxed mb-8 max-w-xl" style={{ color: 'var(--muted)' }}>
+              Web to see the full picture. Telegram to get the daily digest.
+            </p>
 
-        <p className="text-lg leading-relaxed mb-4 max-w-xl" style={{ color: 'var(--muted)' }}>
-          Tendon collects everything you do in Claude Code and delivers a clear daily report and plan.
-          No manual input. No context switching.
-        </p>
-        <p className="text-base leading-relaxed mb-12 max-w-xl" style={{ color: 'var(--subtle)' }}>
-          Web to see the full picture. Telegram to get the daily digest.
-        </p>
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              <Link href="/register" className="btn-accent px-6 py-3">
+                Start free — no card →
+              </Link>
+              <button
+                onClick={() => copy('cli')}
+                className="btn-ghost font-mono text-xs px-4 py-3 justify-start sm:justify-center"
+                style={copied === 'cli' ? { borderColor: 'rgba(99,102,241,0.5)', color: 'var(--accent-light)', background: 'rgba(99,102,241,0.08)' } : undefined}
+              >
+                <span style={{ color: 'var(--subtle)' }}>$</span> {copied === 'cli' ? '✓ Copied' : CLI_CMD}
+              </button>
+            </div>
 
-        {/* ── Two paths ─────────────────────── */}
-        <div className="grid sm:grid-cols-2 gap-4 max-w-2xl">
+            <p className="text-xs flex items-center gap-4" style={{ color: 'var(--muted)' }}>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full" style={{ background: 'var(--success)' }} />
+                2-min setup
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full" style={{ background: 'var(--accent-light)' }} />
+                11 MCP tools
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1 h-1 rounded-full" style={{ background: '#fcd34d' }} />
+                MIT license
+              </span>
+            </p>
+          </div>
 
-          {/* Self-hosted */}
+          {/* Right: product mockup */}
+          <div className="relative">
+            <div className="absolute -inset-8 opacity-40 pointer-events-none" style={{
+              background: 'radial-gradient(circle at center, rgba(99,102,241,0.25), transparent 70%)',
+              filter: 'blur(40px)',
+            }} />
+            <div
+              className="relative card-elev overflow-hidden"
+              style={{ borderRadius: 16 }}
+            >
+              {/* mock titlebar */}
+              <div className="flex items-center gap-1.5 px-3 py-2 border-b" style={{ borderColor: 'var(--border)', background: 'rgba(0,0,0,0.3)' }}>
+                <span className="w-2 h-2 rounded-full" style={{ background: '#ef4444' }} />
+                <span className="w-2 h-2 rounded-full" style={{ background: '#f59e0b' }} />
+                <span className="w-2 h-2 rounded-full" style={{ background: '#10b981' }} />
+                <span className="flex-1 text-center text-[10px] font-mono" style={{ color: 'var(--subtle)' }}>
+                  tendon.alashed.kz/dashboard
+                </span>
+              </div>
+              <div className="flex">
+                {/* mini sidebar */}
+                <div className="w-16 shrink-0 px-2 py-3 border-r" style={{ borderColor: 'var(--border)', background: 'var(--bg-soft)' }}>
+                  <div className="flex items-center gap-1 mb-4 px-1">
+                    <Logo size={12} variant="gradient" />
+                    <span className="text-[9px] font-semibold">tendon</span>
+                  </div>
+                  {['Overview', 'Tasks', 'Sessions', 'Team'].map((label, i) => (
+                    <div
+                      key={label}
+                      className="px-1.5 py-1 rounded mb-0.5 text-[9px]"
+                      style={{
+                        background: i === 0 ? 'var(--surface-2)' : 'transparent',
+                        color: i === 0 ? 'var(--text)' : 'var(--muted)',
+                      }}
+                    >
+                      {label}
+                    </div>
+                  ))}
+                </div>
+                {/* mini content */}
+                <div className="flex-1 p-3 min-w-0">
+                  <p className="text-[8px] uppercase tracking-widest mb-1" style={{ color: 'var(--subtle)' }}>Overview</p>
+                  <p className="text-xs font-display font-semibold mb-3">Good work, Alex.</p>
+
+                  {/* focus card */}
+                  <div
+                    className="rounded-md p-2 mb-2"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(139,92,246,0.08) 100%)',
+                      border: '1px solid rgba(99,102,241,0.28)',
+                    }}
+                  >
+                    <p className="text-[8px] uppercase tracking-widest" style={{ color: 'var(--accent-light)' }}>Focus · active</p>
+                    <p className="text-[10px] font-semibold truncate">Fix auth token refresh</p>
+                    <p className="text-[9px] font-mono" style={{ color: 'var(--accent-light)' }}>⏱ 42m</p>
+                  </div>
+
+                  {/* stats */}
+                  <div className="grid grid-cols-3 gap-1 mb-2">
+                    {[
+                      { v: '2h 14m', l: 'Time' },
+                      { v: '3', l: 'Active' },
+                      { v: '8', l: 'Done' },
+                    ].map((s) => (
+                      <div
+                        key={s.l}
+                        className="rounded p-1.5"
+                        style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+                      >
+                        <p className="text-[10px] font-display font-semibold leading-none">{s.v}</p>
+                        <p className="text-[8px] mt-0.5" style={{ color: 'var(--muted)' }}>{s.l}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* heatmap */}
+                  <div className="flex gap-[2px] mb-2">
+                    {Array.from({ length: 18 }).map((_, i) => {
+                      const seed = (i * 7) % 10;
+                      const op = seed < 2 ? 0.06 : seed < 5 ? 0.25 : seed < 8 ? 0.5 : 0.8;
+                      return (
+                        <div
+                          key={i}
+                          className="w-1.5 h-4 rounded-sm"
+                          style={{ background: `rgba(99,102,241,${op})` }}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {/* task rows */}
+                  {[
+                    { title: 'Ship onboarding v2', status: '#a5b4fc' },
+                    { title: 'Review Team PRs', status: '#6ee7b7' },
+                    { title: 'Write MCP spec', status: '#71717a' },
+                  ].map((t) => (
+                    <div key={t.title} className="flex items-center gap-1.5 py-1 px-1">
+                      <span className="w-1 h-1 rounded-full" style={{ background: t.status }} />
+                      <p className="text-[10px] truncate flex-1">{t.title}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Two install paths ───────────────────────────────── */}
+      <section className="container-app relative mb-20">
+        <div className="grid sm:grid-cols-2 gap-4">
           <div className="card p-5">
-            <p className="text-xs font-medium mb-1" style={{ color: 'var(--muted)' }}>Self-hosted</p>
-            <p className="text-xs mb-4" style={{ color: 'var(--subtle)' }}>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--text-soft)' }}>Self-hosted</p>
+            <p className="text-xs mb-4" style={{ color: 'var(--muted)' }}>
               One command. Docker included. No account.
             </p>
             <div
@@ -83,25 +221,24 @@ export default function LandingPage() {
               <button
                 onClick={() => copy('cli')}
                 className="shrink-0 ml-3 text-xs transition-colors"
-                style={{ color: copied === 'cli' ? 'var(--accent)' : 'var(--subtle)' }}
+                style={{ color: copied === 'cli' ? 'var(--accent-light)' : 'var(--muted)' }}
               >
                 {copied === 'cli' ? '✓' : 'copy'}
               </button>
             </div>
-            <p className="text-xs" style={{ color: 'var(--subtle)' }}>
+            <p className="text-xs" style={{ color: 'var(--muted)' }}>
               Runs locally · PostgreSQL via Docker · MIT license
             </p>
           </div>
 
-          {/* Cloud */}
-          <div className="card p-5" style={{ borderColor: 'rgba(59,130,246,0.2)', background: 'rgba(59,130,246,0.03)' }}>
-            <p className="text-xs font-medium mb-1" style={{ color: 'var(--accent)' }}>Hosted</p>
-            <p className="text-xs mb-4" style={{ color: 'var(--subtle)' }}>
+          <div className="card p-5" style={{ borderColor: 'rgba(99,102,241,0.28)', background: 'rgba(99,102,241,0.04)' }}>
+            <p className="text-xs font-medium mb-1" style={{ color: 'var(--accent-light)' }}>Hosted</p>
+            <p className="text-xs mb-4" style={{ color: 'var(--muted)' }}>
               Dashboard, analytics, team features, Telegram.
             </p>
             <div
               className="flex items-center justify-between px-3 py-2.5 rounded-lg mb-3 font-mono text-sm overflow-hidden"
-              style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}
+              style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)' }}
             >
               <code className="truncate text-xs" style={{ color: 'var(--accent-light)' }}>
                 {CLOUD_CMD}
@@ -109,16 +246,12 @@ export default function LandingPage() {
               <button
                 onClick={() => copy('cloud')}
                 className="shrink-0 ml-3 text-xs transition-colors"
-                style={{ color: copied === 'cloud' ? 'var(--accent)' : 'var(--subtle)' }}
+                style={{ color: copied === 'cloud' ? 'var(--accent-light)' : 'var(--muted)' }}
               >
                 {copied === 'cloud' ? '✓' : 'copy'}
               </button>
             </div>
-            <Link
-              href="/register"
-              className="text-xs font-medium"
-              style={{ color: 'var(--accent)' }}
-            >
+            <Link href="/register" className="text-xs font-medium" style={{ color: 'var(--accent-light)' }}>
               Create free account →
             </Link>
           </div>
@@ -126,7 +259,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Chat demo ───────────────────────────────────────── */}
-      <section className="px-6 max-w-2xl mx-auto mb-28">
+      <section className="container-reading mb-28">
         <div
           className="rounded-xl p-6 font-mono text-sm"
           style={{ background: '#111115', border: '1px solid rgba(255,255,255,0.07)' }}
@@ -182,8 +315,9 @@ export default function LandingPage() {
       </section>
 
       {/* ── What it does ────────────────────────────────────── */}
-      <section className="px-6 max-w-3xl mx-auto mb-28">
-        <h2 className="font-display text-2xl font-bold mb-10">What Tendon does</h2>
+      <section className="container-reading mb-28">
+        <p className="eyebrow mb-3">Product</p>
+        <h2 className="display-2 mb-10">What Tendon does</h2>
         <div className="space-y-8">
           {[
             {
@@ -206,7 +340,7 @@ export default function LandingPage() {
             <div key={label} className="flex gap-6">
               <div
                 className="shrink-0 w-px self-stretch"
-                style={{ background: 'rgba(59,130,246,0.2)' }}
+                style={{ background: 'rgba(99,102,241,0.2)' }}
               />
               <div>
                 <p className="font-semibold text-sm mb-1">{label}</p>
@@ -218,9 +352,10 @@ export default function LandingPage() {
       </section>
 
       {/* ── MCP Tools ───────────────────────────────────────── */}
-      <section className="px-6 max-w-3xl mx-auto mb-28">
-        <h2 className="font-display text-2xl font-bold mb-2">11 MCP tools</h2>
-        <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>
+      <section className="container-reading mb-28">
+        <p className="eyebrow mb-3">Toolbelt</p>
+        <h2 className="display-2 mb-2">11 MCP tools</h2>
+        <p className="text-base mb-10" style={{ color: 'var(--muted)' }}>
           Everything Claude needs to manage your work, out of the box.
         </p>
         <div className="grid sm:grid-cols-2 gap-2">
@@ -253,15 +388,11 @@ export default function LandingPage() {
 
       {/* ── Open source ─────────────────────────────────────── */}
       <section
-        className="px-6 max-w-3xl mx-auto mb-28 py-10 rounded-2xl"
+        className="container-reading mb-28 py-10 rounded-2xl"
         style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
       >
-        <p className="text-xs uppercase tracking-widest mb-4" style={{ color: 'var(--subtle)' }}>
-          Open source · MIT
-        </p>
-        <h2 className="font-display text-2xl font-bold mb-3">
-          Built in public.
-        </h2>
+        <p className="eyebrow mb-3">Open source · MIT</p>
+        <h2 className="display-2 mb-3">Built in public.</h2>
         <p className="text-sm leading-relaxed mb-6 max-w-lg" style={{ color: 'var(--muted)' }}>
           Tendon is fully open source. Run it yourself, fork it, contribute.
           The hosted version at tendon.alashed.kz runs the same code.
@@ -289,9 +420,10 @@ export default function LandingPage() {
       </section>
 
       {/* ── Pricing ─────────────────────────────────────────── */}
-      <section className="px-6 max-w-3xl mx-auto mb-28">
-        <h2 className="font-display text-2xl font-bold mb-2">Pricing</h2>
-        <p className="text-sm mb-10" style={{ color: 'var(--muted)' }}>
+      <section className="container-reading mb-28">
+        <p className="eyebrow mb-3">Pricing</p>
+        <h2 className="display-2 mb-2">Simple, honest, free.</h2>
+        <p className="text-base mb-10" style={{ color: 'var(--muted)' }}>
           Self-hosted is always free. Hosted cloud starts free.
         </p>
 
@@ -317,12 +449,12 @@ export default function LandingPage() {
 
           {/* Pro */}
           <div className="card p-6 flex flex-col relative overflow-hidden"
-            style={{ borderColor: 'rgba(59,130,246,0.3)', background: 'rgba(59,130,246,0.03)' }}>
+            style={{ borderColor: 'rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.04)' }}>
             <div
               className="absolute top-0 left-0 right-0 h-0.5"
-              style={{ background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.6), transparent)' }}
+              style={{ background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.7), rgba(139,92,246,0.6), transparent)' }}
             />
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>Pro</p>
+            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--accent-light)' }}>Pro</p>
             <div className="font-display text-3xl font-bold mb-1">$9</div>
             <p className="text-xs mb-6" style={{ color: 'var(--muted)' }}>per month</p>
             <ul className="space-y-2 text-sm flex-1 mb-6" style={{ color: 'var(--muted)' }}>
@@ -335,12 +467,12 @@ export default function LandingPage() {
                 'Priority support',
               ].map(f => (
                 <li key={f} className="flex items-center gap-2">
-                  <span style={{ color: 'var(--accent)' }}>✓</span>{f}
+                  <span style={{ color: 'var(--accent-light)' }}>✓</span>{f}
                 </li>
               ))}
             </ul>
             <a href="mailto:hello@tendon.alashed.kz?subject=Pro plan"
-              className="amber-btn w-full py-2.5 rounded-lg text-sm text-center block">
+              className="btn-accent w-full text-center">
               Get Pro
             </a>
           </div>
@@ -378,26 +510,24 @@ export default function LandingPage() {
       </section>
 
       {/* ── Final CTA ───────────────────────────────────────── */}
-      <section className="px-6 max-w-xl mx-auto mb-24 text-center">
-        <h2 className="font-display text-3xl font-bold mb-3">
-          Get started now
-        </h2>
-        <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>
+      <section className="container-narrow mb-24 text-center">
+        <h2 className="display-2 mb-4">Get started in 60 seconds.</h2>
+        <p className="text-base mb-8" style={{ color: 'var(--muted)' }}>
           Self-hosted in one command. Hosted at tendon.alashed.kz.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={() => copy('cli')}
-            className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg border font-mono text-sm transition-all"
+            className="flex items-center justify-center gap-2 px-5 py-3 rounded-lg border font-mono text-sm transition-all"
             style={{
-              borderColor: copied === 'cli' ? 'rgba(59,130,246,0.5)' : 'rgba(255,255,255,0.1)',
-              background: copied === 'cli' ? 'rgba(59,130,246,0.08)' : 'transparent',
-              color: copied === 'cli' ? 'var(--accent)' : 'var(--text)',
+              borderColor: copied === 'cli' ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.1)',
+              background: copied === 'cli' ? 'rgba(99,102,241,0.08)' : 'transparent',
+              color: copied === 'cli' ? 'var(--accent-light)' : 'var(--text)',
             }}
           >
             {copied === 'cli' ? '✓ Copied' : 'npx tendon-cli'}
           </button>
-          <Link href="/register" className="amber-btn px-6 py-3 rounded-lg text-sm">
+          <Link href="/register" className="btn-accent px-6 py-3">
             Free account →
           </Link>
         </div>
@@ -405,11 +535,13 @@ export default function LandingPage() {
 
       {/* ── Footer ──────────────────────────────────────────── */}
       <footer
-        className="border-t px-6 py-8 max-w-5xl mx-auto flex items-center justify-between text-xs"
+        className="container-app border-t py-8 flex items-center justify-between text-xs"
         style={{ borderColor: 'var(--border)', color: 'var(--subtle)' }}
       >
-        <span>
-          <span style={{ color: 'var(--accent)' }}>tendon</span> · MIT License
+        <span className="flex items-center gap-2">
+          <Logo size={20} variant="gradient" />
+          <span style={{ color: 'var(--text-soft)' }}>Tendon</span>
+          <span>· MIT License</span>
         </span>
         <div className="flex gap-5">
           <a href="https://github.com/Alashed/tendon-mcp" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-white">GitHub</a>
