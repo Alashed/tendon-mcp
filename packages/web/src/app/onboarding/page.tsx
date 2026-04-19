@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { Logo } from '@/components/ui';
@@ -11,6 +11,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.tendon.alashed.k
 
 type FlowStep = 'connect' | 'first_action' | 'first_value';
 type StatusKey = 'not_started' | 'waiting_connect' | 'connected' | 'waiting_first_call' | 'first_value';
+
+/** For poll backoff: ok = reached API; neutral = no JWT yet; bad = HTTP error or thrown */
+type SyncPollKind = 'ok' | 'neutral' | 'bad';
+
+type SyncOptions = {
+  /** Clears error banner before check (manual button, tab return) */
+  userInitiated?: boolean;
+};
 
 interface FirstValueSnapshot {
   taskCount: number;
@@ -43,7 +51,9 @@ export default function OnboardingPage() {
   const [checking, setChecking] = useState(false);
   const [connected, setConnected] = useState<boolean | null>(null);
   const [snapshot, setSnapshot] = useState<FirstValueSnapshot>({ taskCount: 0, trackedMinutes: 0 });
+  const [syncError, setSyncError] = useState<string | null>(null);
   const emittedEvents = useRef(new Set<string>());
+  const pollMsRef = useRef(10_000);
 
   const displayName = useMemo(
     () => user?.firstName || user?.emailAddresses[0]?.emailAddress?.split('@')[0] || 'there',
@@ -116,81 +126,101 @@ export default function OnboardingPage() {
     };
   }, []);
 
-  const syncFlowState = useCallback(async () => {
-    setChecking(true);
-    try {
-      const token = await getToken();
-      if (!token) return;
+  const syncFlowState = useCallback(
+    async (opts?: SyncOptions): Promise<SyncPollKind> => {
+      if (opts?.userInitiated) setSyncError(null);
+      setChecking(true);
+      try {
+        const token = await getToken();
+        if (!token) {
+          return 'neutral';
+        }
 
-      const res = await fetch(`${API_URL}/auth/claude-status`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
+        const res = await fetch(`${API_URL}/auth/claude-status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          setSyncError(
+            `Could not reach Tendon API (HTTP ${res.status}). Check https://api.tendon.alashed.kz or try again.`,
+          );
+          return 'bad';
+        }
 
-      const { data } = await res.json();
-      const isConnected = Boolean(data?.connected);
-      const workspaceId = (data?.workspace_id as string | null) ?? null;
-      setConnected(isConnected);
+        setSyncError(null);
 
-      if (!isConnected) {
-        setStatus('waiting_connect');
-        setStep('connect');
-        return;
-      }
+        const { data } = await res.json();
+        const isConnected = Boolean(data?.connected);
+        const workspaceId = (data?.workspace_id as string | null) ?? null;
+        setConnected(isConnected);
 
-      if (!workspaceId) {
+        if (!isConnected) {
+          setStatus('waiting_connect');
+          setStep('connect');
+          return 'ok';
+        }
+
+        if (!workspaceId) {
+          setStatus('connected');
+          setStep('first_action');
+          return 'ok';
+        }
+
         setStatus('connected');
-        setStep('first_action');
-        return;
-      }
+        void trackEventOnce('mcp_connected', { workspace_id: workspaceId });
+        void trackEventOnce('oauth_completed', { workspace_id: workspaceId });
 
-      setStatus('connected');
-      void trackEventOnce('mcp_connected', { workspace_id: workspaceId });
-      void trackEventOnce('oauth_completed', { workspace_id: workspaceId });
+        const onboardingStatusRes = await fetch(`${API_URL}/events/onboarding/status?workspace_id=${workspaceId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (onboardingStatusRes.ok) {
+          const { data: onboardingStatus } = await onboardingStatusRes.json() as { data: OnboardingStatusResponse };
+          if (onboardingStatus.first_value_achieved) {
+            const valueCheck = await checkFirstValue(token, workspaceId);
+            setStatus('first_value');
+            setStep('first_value');
+            void trackEventOnce('first_value_achieved', {
+              workspace_id: workspaceId,
+              source: onboardingStatus.first_value_source ?? 'event',
+              task_count: valueCheck.taskCount,
+              tracked_minutes: valueCheck.trackedMinutes,
+            });
+            if (valueCheck.taskCount > 0) void trackEventOnce('first_task_created', { workspace_id: workspaceId });
+            if (valueCheck.trackedMinutes > 0) void trackEventOnce('first_focus_started', { workspace_id: workspaceId });
+            return 'ok';
+          }
+        } else {
+          setSyncError(
+            `Activation status failed (HTTP ${onboardingStatusRes.status}). Tasks still checked locally.`,
+          );
+        }
 
-      const onboardingStatusRes = await fetch(`${API_URL}/events/onboarding/status?workspace_id=${workspaceId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (onboardingStatusRes.ok) {
-        const { data: onboardingStatus } = await onboardingStatusRes.json() as { data: OnboardingStatusResponse };
-        if (onboardingStatus.first_value_achieved) {
-          const valueCheck = await checkFirstValue(token, workspaceId);
+        const valueCheck = await checkFirstValue(token, workspaceId);
+        if (valueCheck.hasFirstValue) {
+          setSyncError(null);
           setStatus('first_value');
           setStep('first_value');
           void trackEventOnce('first_value_achieved', {
             workspace_id: workspaceId,
-            source: onboardingStatus.first_value_source ?? 'event',
+            source: 'workspace_data',
             task_count: valueCheck.taskCount,
             tracked_minutes: valueCheck.trackedMinutes,
           });
           if (valueCheck.taskCount > 0) void trackEventOnce('first_task_created', { workspace_id: workspaceId });
           if (valueCheck.trackedMinutes > 0) void trackEventOnce('first_focus_started', { workspace_id: workspaceId });
-          return;
+        } else {
+          setStatus('waiting_first_call');
+          setStep('first_action');
         }
+        return 'ok';
+      } catch {
+        setSyncError('Network error — check your connection or VPN, then retry.');
+        return 'bad';
+      } finally {
+        setChecking(false);
       }
-
-      const valueCheck = await checkFirstValue(token, workspaceId);
-      if (valueCheck.hasFirstValue) {
-        setStatus('first_value');
-        setStep('first_value');
-        void trackEventOnce('first_value_achieved', {
-          workspace_id: workspaceId,
-          source: 'workspace_data',
-          task_count: valueCheck.taskCount,
-          tracked_minutes: valueCheck.trackedMinutes,
-        });
-        if (valueCheck.taskCount > 0) void trackEventOnce('first_task_created', { workspace_id: workspaceId });
-        if (valueCheck.trackedMinutes > 0) void trackEventOnce('first_focus_started', { workspace_id: workspaceId });
-      } else {
-        setStatus('waiting_first_call');
-        setStep('first_action');
-      }
-    } catch {
-      // ignore network issues, user can retry
-    } finally {
-      setChecking(false);
-    }
-  }, [checkFirstValue, getToken, trackEventOnce]);
+    },
+    [checkFirstValue, getToken, trackEventOnce],
+  );
 
   useEffect(() => {
     void syncFlowState();
@@ -198,11 +228,40 @@ export default function OnboardingPage() {
   }, [syncFlowState, trackEventOnce]);
 
   useEffect(() => {
+    pollMsRef.current = 10_000;
+  }, [step]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      void syncFlowState({ userInitiated: true });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [syncFlowState]);
+
+  useEffect(() => {
     if (step === 'first_value') return;
-    const interval = setInterval(() => {
-      void syncFlowState();
-    }, 10_000);
-    return () => clearInterval(interval);
+    let cancelled = false;
+    let tid: ReturnType<typeof setTimeout>;
+
+    const tick = async () => {
+      if (cancelled) return;
+      const result = await syncFlowState();
+      if (cancelled) return;
+      if (result === 'bad') {
+        pollMsRef.current = Math.min(60_000, Math.round(pollMsRef.current * 1.5));
+      } else {
+        pollMsRef.current = 10_000;
+      }
+      tid = setTimeout(tick, pollMsRef.current);
+    };
+
+    tid = setTimeout(tick, pollMsRef.current);
+    return () => {
+      cancelled = true;
+      clearTimeout(tid);
+    };
   }, [step, syncFlowState]);
 
   const current = getStatusIndex(status);
@@ -256,7 +315,36 @@ export default function OnboardingPage() {
   const currentStepIndex = wizardSteps.findIndex((s) => s.key === step);
   const progressPct = Math.min(100, ((currentStepIndex + (status === 'first_value' ? 1 : 0.5)) / wizardSteps.length) * 100);
 
-  const WizardShell = ({ children }: { children: React.ReactNode }) => (
+  const syncBanner =
+    syncError ? (
+      <div
+        role="alert"
+        className="mb-6 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3"
+        style={{
+          background: 'rgba(239, 68, 68, 0.08)',
+          border: '1px solid rgba(239, 68, 68, 0.28)',
+        }}
+      >
+        <p className="text-sm flex-1" style={{ color: 'var(--text-soft)' }}>
+          {syncError}
+        </p>
+        <div className="flex gap-2 shrink-0">
+          <button type="button" className="btn-ghost text-xs px-3 py-2" onClick={() => setSyncError(null)}>
+            Dismiss
+          </button>
+          <button
+            type="button"
+            className="btn-primary text-xs px-3 py-2"
+            disabled={checking}
+            onClick={() => void syncFlowState({ userInitiated: true })}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    ) : null;
+
+  const WizardShell = ({ children, banner }: { children: ReactNode; banner?: ReactNode }) => (
     <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: 'var(--bg)' }}>
       <div className="absolute inset-0 glow-bg pointer-events-none" />
       <div className="grid-bg absolute inset-0 opacity-40" />
@@ -318,14 +406,17 @@ export default function OnboardingPage() {
       </header>
 
       <div className="relative flex-1 flex items-start justify-center py-12">
-        <div className="container-narrow">{children}</div>
+        <div className="container-narrow">
+          {banner}
+          {children}
+        </div>
       </div>
     </div>
   );
 
   if (step === 'connect') {
     return (
-      <WizardShell>
+      <WizardShell banner={syncBanner}>
         <div>
           <div className="mb-8">
             <h1 className="display-2 mb-3">Welcome, {displayName}.</h1>
@@ -375,7 +466,7 @@ export default function OnboardingPage() {
           <div className="mb-6">{StatusList}</div>
 
           <button
-            onClick={syncFlowState}
+            onClick={() => void syncFlowState({ userInitiated: true })}
             disabled={checking}
             className="btn-primary w-full"
           >
@@ -388,7 +479,7 @@ export default function OnboardingPage() {
 
   if (step === 'first_action') {
     return (
-      <WizardShell>
+      <WizardShell banner={syncBanner}>
         <div>
           <div className="mb-8">
             <div className="badge badge-success mb-4">
@@ -426,11 +517,15 @@ export default function OnboardingPage() {
 
           <div className="mb-5">{StatusList}</div>
 
-          <button onClick={syncFlowState} disabled={checking} className="btn-primary w-full">
+          <button
+            onClick={() => void syncFlowState({ userInitiated: true })}
+            disabled={checking}
+            className="btn-primary w-full"
+          >
             {checking ? 'Checking…' : 'I sent it — check first value'}
           </button>
           <p className="text-xs text-center mt-3" style={{ color: 'var(--subtle)' }}>
-            Tendon also auto-checks every 10 seconds.
+            Returning from browser auth refreshes status automatically. Background checks slow down if the API keeps failing.
           </p>
         </div>
       </WizardShell>
@@ -438,7 +533,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <WizardShell>
+    <WizardShell banner={syncBanner}>
       <div>
         <div className="text-center mb-10">
           <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5" style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.35)' }}>
